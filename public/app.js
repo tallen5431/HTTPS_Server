@@ -105,11 +105,19 @@ function createProgramCard(program) {
   const btnStop = card.querySelector('.btn-stop');
   const btnRestart = card.querySelector('.btn-restart');
   const btnLogs = card.querySelector('.btn-logs');
+  const btnOpen = card.querySelector('.btn-open');
 
   btnStart.addEventListener('click', () => startProgram(program.id));
   btnStop.addEventListener('click', () => stopProgram(program.id));
   btnRestart.addEventListener('click', () => restartProgram(program.id));
   btnLogs.addEventListener('click', () => toggleLogs(program.id, card));
+
+  // Add click handler for Open button
+  btnOpen.addEventListener('click', () => {
+    if (program.url) {
+      window.open(program.url, '_blank');
+    }
+  });
 
   const btnCloseLogs = card.querySelector('.btn-close-logs');
   btnCloseLogs.addEventListener('click', () => {
@@ -123,9 +131,32 @@ function createProgramCard(program) {
 
 // Update program card
 function updateProgramCard(card, program) {
-  card.querySelector('.program-name').textContent = program.name;
+  const nameElement = card.querySelector('.program-name');
+
+  // Make program name clickable if URL exists
+  if (program.url) {
+    nameElement.innerHTML = `<a href="${program.url}" target="_blank" rel="noopener noreferrer" class="program-name-link">${program.name}</a>`;
+  } else {
+    nameElement.textContent = program.name;
+  }
+
   card.querySelector('.program-path').textContent = program.path;
   card.querySelector('.program-pid').textContent = program.pid || 'N/A';
+
+  // Handle URL display
+  const urlRow = card.querySelector('.program-url-row');
+  const urlLink = card.querySelector('.program-url');
+  const btnOpen = card.querySelector('.btn-open');
+
+  if (program.url) {
+    urlRow.classList.remove('hidden');
+    urlLink.href = program.url;
+    urlLink.textContent = program.url;
+    btnOpen.classList.remove('hidden');
+  } else {
+    urlRow.classList.add('hidden');
+    btnOpen.classList.add('hidden');
+  }
 
   const statusBadge = card.querySelector('.program-status');
   statusBadge.textContent = program.status;

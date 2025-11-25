@@ -178,6 +178,7 @@ function getProgramStatus(programId, config) {
     id: programId,
     name: program.name,
     path: program.path,
+    url: program.url || null,
     status: isRunning ? 'running' : 'stopped',
     pid: isRunning ? proc.pid : null,
     uptime: isRunning && proc.spawnDate ? Date.now() - proc.spawnDate : 0

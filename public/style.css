@@ -94,6 +94,17 @@ main {
   font-size: 1.3rem;
 }
 
+.program-name-link {
+  color: #2196f3;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.program-name-link:hover {
+  color: #0b7dda;
+  text-decoration: underline;
+}
+
 .badge {
   padding: 5px 12px;
   border-radius: 20px;
@@ -201,6 +212,26 @@ main {
 
 .btn-secondary:hover:not(:disabled) {
   background: #616161;
+}
+
+.btn-info {
+  background: #00bcd4;
+  color: white;
+}
+
+.btn-info:hover:not(:disabled) {
+  background: #00acc1;
+}
+
+.program-url {
+  color: #2196f3;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.program-url:hover {
+  color: #0b7dda;
+  text-decoration: underline;
 }
 
 .program-logs {

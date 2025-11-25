@@ -40,6 +40,7 @@ cp config.example.json config.json
       "id": "my-app",
       "name": "My Application",
       "path": "/path/to/your/app",
+      "url": "http://localhost:8001",
       "env": {
         "NODE_ENV": "production",
         "PORT": "8001"
@@ -63,6 +64,10 @@ Each program in the `programs` array should have:
 - **id**: Unique identifier for the program (required)
 - **name**: Display name shown in the web interface (required)
 - **path**: Absolute path to the program directory containing Start.sh (required)
+- **url**: URL where the program can be accessed (optional)
+  - If provided, the program name becomes clickable and an "Open" button appears
+  - Can be HTTP or HTTPS (e.g., `http://localhost:8001` or `https://myapp.com`)
+  - Useful for quickly accessing your applications from the manager interface
 - **env**: Environment variables to pass to the program (optional)
 
 ### SSL Configuration
@@ -150,12 +155,40 @@ Make it executable:
 chmod +x Start.sh
 ```
 
+### Do My Programs Need HTTPS?
+
+**No!** Your individual programs do NOT need to be modified to use HTTPS. Here's what you need to know:
+
+- **The HTTPS Server Manager** runs on HTTPS (port 3000 by default) - this is just the management interface
+- **Your individual programs** can run on HTTP on their own ports (8001, 8002, etc.)
+- The manager simply starts/stops your programs - it doesn't proxy traffic to them
+- Each program is accessed directly on its own port and protocol
+
+**Example Setup:**
+```
+HTTPS Server Manager:  https://localhost:3000  (management interface)
+Your App 1:           http://localhost:8001   (runs as-is, no changes needed)
+Your App 2:           http://localhost:8002   (runs as-is, no changes needed)
+```
+
+**If You Want HTTPS for Your Apps:**
+
+If you want your individual applications to be accessible over HTTPS, you have a few options:
+
+1. **Configure each app individually** - Set up SSL/TLS in each application's code
+2. **Use a reverse proxy** - Tools like Nginx or Caddy can handle HTTPS and forward to your HTTP apps
+3. **Keep them on HTTP** - For local/LAN access, HTTP is usually fine
+
+The HTTPS Server Manager will work with your apps regardless of whether they use HTTP or HTTPS!
+
 ## Web Interface
 
 The web interface provides:
 
-- **Program Cards**: Each program displays its status, path, and PID
+- **Program Cards**: Each program displays its status, path, PID, and URL (if configured)
+- **Clickable Program Names**: If a URL is configured, click the program name to open it in a new tab
 - **Start/Stop/Restart Buttons**: Control programs with one click
+- **Open Button**: Appears when a URL is configured - click to open the program in a new tab
 - **Log Viewer**: Click "Logs" to view the last 100 lines of output
 - **Real-time Status**: Status updates automatically via WebSocket connection
 
@@ -164,6 +197,7 @@ The web interface provides:
 - **Green (Start)**: Start a stopped program
 - **Red (Stop)**: Stop a running program
 - **Blue (Restart)**: Restart a running program
+- **Cyan (Open)**: Open the program's URL in a new browser tab
 - **Gray (Logs)**: View program logs
 
 ## Network Access
