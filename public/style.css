@@ -71,6 +71,118 @@ main {
   min-height: 400px;
 }
 
+/* Toolbar */
+.toolbar {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.stats-bar {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-label {
+  color: #666;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.stat-value {
+  color: #333;
+  font-weight: 700;
+  font-size: 1.2rem;
+  min-width: 30px;
+  text-align: right;
+}
+
+.stat-item.stat-success .stat-value {
+  color: #2e7d32;
+}
+
+.stat-item.stat-danger .stat-value {
+  color: #c62828;
+}
+
+.search-bar {
+  flex: 1;
+  max-width: 400px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 40px 10px 15px;
+  border: 2px solid #ddd;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.search-input:focus {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #999;
+  padding: 5px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.btn-clear-search:hover {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.no-results {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.no-results h2 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.no-results p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
 .programs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -580,5 +692,19 @@ main {
 
   .log-search {
     min-width: 100%;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-bar {
+    max-width: none;
+  }
+
+  .stats-bar {
+    justify-content: space-around;
+    gap: 15px;
   }
 }

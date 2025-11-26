@@ -22,10 +22,13 @@ function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const data = fs.readFileSync(CONFIG_FILE, 'utf8');
-      return JSON.parse(data);
+      const config = JSON.parse(data);
+      validateConfig(config);
+      return config;
     }
   } catch (err) {
     console.error('Error loading config:', err.message);
+    throw err;
   }
 
   return {
@@ -36,6 +39,42 @@ function loadConfig() {
       autoGenerate: true
     }
   };
+}
+
+// Validate configuration
+function validateConfig(config) {
+  if (!config.programs || !Array.isArray(config.programs)) {
+    throw new Error('Config must have a "programs" array');
+  }
+
+  const seenIds = new Set();
+
+  config.programs.forEach((program, index) => {
+    // Check required fields
+    if (!program.id) {
+      throw new Error(`Program at index ${index} is missing required field: "id"`);
+    }
+    if (!program.name) {
+      throw new Error(`Program "${program.id}" is missing required field: "name"`);
+    }
+    if (!program.path) {
+      throw new Error(`Program "${program.id}" is missing required field: "path"`);
+    }
+
+    // Check for duplicate IDs
+    if (seenIds.has(program.id)) {
+      throw new Error(`Duplicate program ID found: "${program.id}"`);
+    }
+    seenIds.add(program.id);
+
+    // Warn about missing Start.sh (don't fail, just warn)
+    const startScript = path.join(program.path, 'Start.sh');
+    if (!fs.existsSync(startScript)) {
+      console.warn(`Warning: Start.sh not found for program "${program.id}" at ${startScript}`);
+    }
+  });
+
+  return true;
 }
 
 // Generate self-signed certificate
@@ -284,6 +323,32 @@ app.get('/api/programs/:id/logs', (req, res) => {
 app.get('/api/config', (req, res) => {
   const config = loadConfig();
   res.json(config);
+});
+
+// Stats endpoint
+app.get('/api/stats', (req, res) => {
+  const config = loadConfig();
+  const programs = getAllProgramsStatus(config);
+
+  const stats = {
+    total: programs.length,
+    running: programs.filter(p => p.status === 'running').length,
+    stopped: programs.filter(p => p.status === 'stopped').length,
+    uptime: programs
+      .filter(p => p.status === 'running')
+      .reduce((sum, p) => sum + (p.uptime || 0), 0)
+  };
+
+  res.json(stats);
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
 // Start server

@@ -2,13 +2,20 @@
 let ws = null;
 let reconnectTimeout = null;
 let currentPrograms = [];
+let searchQuery = '';
 
 // DOM elements
 const programsGrid = document.getElementById('programsGrid');
 const emptyState = document.getElementById('emptyState');
+const noResults = document.getElementById('noResults');
 const wsStatus = document.getElementById('wsStatus');
 const wsStatusText = document.getElementById('wsStatusText');
 const toastContainer = document.getElementById('toastContainer');
+const searchInput = document.getElementById('searchInput');
+const btnClearSearch = document.getElementById('btnClearSearch');
+const statTotal = document.getElementById('statTotal');
+const statRunning = document.getElementById('statRunning');
+const statStopped = document.getElementById('statStopped');
 
 // Toast Notification System
 function showToast(message, type = 'info', duration = 4000) {
@@ -126,10 +133,11 @@ function updateProgramsDisplay(programs) {
   if (!programs || programs.length === 0) {
     programsGrid.classList.add('hidden');
     emptyState.classList.remove('hidden');
+    noResults.classList.add('hidden');
+    updateStats(programs);
     return;
   }
 
-  programsGrid.classList.remove('hidden');
   emptyState.classList.add('hidden');
 
   // Update existing cards or create new ones
@@ -152,6 +160,61 @@ function updateProgramsDisplay(programs) {
       card.remove();
     }
   });
+
+  // Apply search filter
+  filterPrograms();
+
+  // Update stats
+  updateStats(programs);
+}
+
+// Filter programs based on search query
+function filterPrograms() {
+  const cards = programsGrid.querySelectorAll('.program-card');
+  let visibleCount = 0;
+
+  cards.forEach(card => {
+    const programId = card.getAttribute('data-program-id');
+    const program = currentPrograms.find(p => p.id === programId);
+
+    if (!program) return;
+
+    const searchLower = searchQuery.toLowerCase();
+    const matches = !searchQuery ||
+      program.name.toLowerCase().includes(searchLower) ||
+      program.id.toLowerCase().includes(searchLower) ||
+      (program.path && program.path.toLowerCase().includes(searchLower)) ||
+      (program.url && program.url.toLowerCase().includes(searchLower));
+
+    if (matches) {
+      card.classList.remove('hidden');
+      visibleCount++;
+    } else {
+      card.classList.add('hidden');
+    }
+  });
+
+  // Show/hide grid and no results message
+  if (visibleCount === 0 && searchQuery) {
+    programsGrid.classList.add('hidden');
+    noResults.classList.remove('hidden');
+  } else {
+    programsGrid.classList.remove('hidden');
+    noResults.classList.add('hidden');
+  }
+}
+
+// Update stats display
+function updateStats(programs) {
+  if (!programs) programs = currentPrograms;
+
+  const total = programs.length;
+  const running = programs.filter(p => p.status === 'running').length;
+  const stopped = programs.filter(p => p.status === 'stopped').length;
+
+  statTotal.textContent = total;
+  statRunning.textContent = running;
+  statStopped.textContent = stopped;
 }
 
 // Create program card
@@ -460,6 +523,55 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnStopAll').addEventListener('click', stopAll);
   document.getElementById('btnRestartAll').addEventListener('click', restartAll);
 
+  // Setup search functionality
+  searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    filterPrograms();
+
+    // Show/hide clear button
+    if (searchQuery) {
+      btnClearSearch.classList.remove('hidden');
+    } else {
+      btnClearSearch.classList.add('hidden');
+    }
+  });
+
+  btnClearSearch.addEventListener('click', () => {
+    searchInput.value = '';
+    searchQuery = '';
+    filterPrograms();
+    btnClearSearch.classList.add('hidden');
+    searchInput.focus();
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Ctrl/Cmd + F: Focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    }
+
+    // Escape: Clear search and unfocus
+    if (e.key === 'Escape') {
+      if (searchQuery) {
+        searchInput.value = '';
+        searchQuery = '';
+        filterPrograms();
+        btnClearSearch.classList.add('hidden');
+        searchInput.blur();
+      }
+    }
+
+    // Ctrl/Cmd + K: Focus search (alternate shortcut)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    }
+  });
+
   fetchPrograms();
   connectWebSocket();
 
@@ -474,4 +586,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }, 1000);
+
+  // Show keyboard shortcuts hint
+  console.log('🎮 Keyboard Shortcuts:');
+  console.log('  Ctrl/Cmd + F or K: Focus search');
+  console.log('  Escape: Clear search');
 });

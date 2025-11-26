@@ -29,6 +29,27 @@
       </div>
     </header>
 
+    <div class="toolbar">
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-label">Total:</span>
+          <span class="stat-value" id="statTotal">0</span>
+        </div>
+        <div class="stat-item stat-success">
+          <span class="stat-label">Running:</span>
+          <span class="stat-value" id="statRunning">0</span>
+        </div>
+        <div class="stat-item stat-danger">
+          <span class="stat-label">Stopped:</span>
+          <span class="stat-value" id="statStopped">0</span>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search programs... (Ctrl+F)" class="search-input">
+        <button class="btn-clear-search hidden" id="btnClearSearch" title="Clear search">✕</button>
+      </div>
+    </div>
+
     <main>
       <div class="programs-grid" id="programsGrid">
         <!-- Programs will be loaded here -->
@@ -37,6 +58,11 @@
       <div class="empty-state" id="emptyState">
         <h2>No Programs Configured</h2>
         <p>Edit config.json to add programs to manage.</p>
+      </div>
+
+      <div class="no-results hidden" id="noResults">
+        <h2>No Programs Found</h2>
+        <p>No programs match your search criteria.</p>
       </div>
     </main>
   </div>
