@@ -2,22 +2,32 @@
   "programs": [
     {
       "id": "example-app-1",
-      "name": "Example Application 1",
+      "name": "Example Application 1 (Auto URL)",
       "path": "/path/to/your/app1",
-      "url": "http://localhost:8001",
       "env": {
         "NODE_ENV": "production",
         "PORT": "8001"
-      }
+      },
+      "comment": "URL will be auto-generated as http://localhost:8001"
     },
     {
       "id": "example-app-2",
-      "name": "Example Application 2",
+      "name": "Example Application 2 (Manual URL)",
       "path": "/path/to/your/app2",
-      "url": "http://192.168.1.100:8002",
+      "url": "https://myapp.example.com",
       "env": {
         "PORT": "8002"
-      }
+      },
+      "comment": "Manual URL overrides auto-generation"
+    },
+    {
+      "id": "example-app-3",
+      "name": "Example Application 3 (No URL)",
+      "path": "/path/to/your/app3",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "comment": "No PORT env var and no URL, so no clickable link will appear"
     }
   ],
   "ssl": {

@@ -165,6 +165,23 @@ function stopProgram(programId) {
   return { id: programId, status: 'stopped' };
 }
 
+// Auto-generate URL based on program configuration
+function generateProgramUrl(program) {
+  // If URL is explicitly provided, use it
+  if (program.url) {
+    return program.url;
+  }
+
+  // Try to auto-generate from PORT environment variable
+  if (program.env && program.env.PORT) {
+    const port = program.env.PORT;
+    return `http://localhost:${port}`;
+  }
+
+  // No URL can be generated
+  return null;
+}
+
 function getProgramStatus(programId, config) {
   const program = config.programs.find(p => p.id === programId);
   if (!program) {
@@ -178,7 +195,7 @@ function getProgramStatus(programId, config) {
     id: programId,
     name: program.name,
     path: program.path,
-    url: program.url || null,
+    url: generateProgramUrl(program),
     status: isRunning ? 'running' : 'stopped',
     pid: isRunning ? proc.pid : null,
     uptime: isRunning && proc.spawnDate ? Date.now() - proc.spawnDate : 0

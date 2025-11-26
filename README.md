@@ -40,9 +40,7 @@ cp config.example.json config.json
       "id": "my-app",
       "name": "My Application",
       "path": "/path/to/your/app",
-      "url": "http://localhost:8001",
       "env": {
-        "NODE_ENV": "production",
         "PORT": "8001"
       }
     }
@@ -54,6 +52,7 @@ cp config.example.json config.json
   }
 }
 ```
+**Note:** If you set a `PORT` environment variable, the URL will be auto-generated as `http://localhost:PORT`. You can also manually specify a `url` field to override this.
 
 ## Configuration
 
@@ -65,10 +64,54 @@ Each program in the `programs` array should have:
 - **name**: Display name shown in the web interface (required)
 - **path**: Absolute path to the program directory containing Start.sh (required)
 - **url**: URL where the program can be accessed (optional)
-  - If provided, the program name becomes clickable and an "Open" button appears
+  - If provided, this URL will be used
+  - If NOT provided, the URL will be **auto-generated** from the PORT environment variable
+  - Auto-generated format: `http://localhost:PORT`
   - Can be HTTP or HTTPS (e.g., `http://localhost:8001` or `https://myapp.com`)
-  - Useful for quickly accessing your applications from the manager interface
+  - When a URL exists (manual or auto-generated), the program name becomes clickable and an "Open" button appears
 - **env**: Environment variables to pass to the program (optional)
+  - If you set a `PORT` variable here, a URL will be automatically generated
+
+#### Auto-Generated URLs
+
+The manager can automatically generate URLs for your programs! Here's how it works:
+
+**With PORT environment variable (auto-generated):**
+```json
+{
+  "id": "my-app",
+  "name": "My Application",
+  "path": "/path/to/your/app",
+  "env": {
+    "PORT": "8001"
+  }
+}
+```
+→ URL auto-generated as: `http://localhost:8001`
+
+**With manual URL (overrides auto-generation):**
+```json
+{
+  "id": "my-app",
+  "name": "My Application",
+  "path": "/path/to/your/app",
+  "url": "https://myapp.example.com",
+  "env": {
+    "PORT": "8001"
+  }
+}
+```
+→ Uses manual URL: `https://myapp.example.com`
+
+**Without PORT or URL (no clickable link):**
+```json
+{
+  "id": "my-app",
+  "name": "My Application",
+  "path": "/path/to/your/app"
+}
+```
+→ No URL available (program still works, just no link)
 
 ### SSL Configuration
 
