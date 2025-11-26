@@ -137,6 +137,9 @@ function startProgram(programId, config) {
     broadcastStatus();
   });
 
+  // Track spawn time for uptime calculation
+  proc.spawnDate = Date.now();
+
   processes.set(programId, proc);
 
   return {

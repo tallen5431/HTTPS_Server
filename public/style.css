@@ -22,9 +22,19 @@ header {
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 30px;
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 h1 {
@@ -116,6 +126,16 @@ main {
 .badge.running {
   background: #e8f5e9;
   color: #2e7d32;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .badge.stopped {
@@ -328,18 +348,237 @@ main {
   display: none;
 }
 
+/* Button Sizes */
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+/* Loading Spinner */
+.btn-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn.loading .btn-spinner {
+  display: inline-block;
+}
+
+.btn.loading .btn-text {
+  display: none;
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+}
+
+.toast {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease-out;
+  border-left: 4px solid #2196f3;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast.toast-success {
+  border-left-color: #4caf50;
+}
+
+.toast.toast-error {
+  border-left-color: #f44336;
+}
+
+.toast.toast-warning {
+  border-left-color: #ff9800;
+}
+
+.toast.toast-info {
+  border-left-color: #2196f3;
+}
+
+.toast-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.toast-message {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  background: #f0f0f0;
+  color: #666;
+}
+
+/* Log Controls */
+.logs-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.log-search {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.log-search:focus {
+  border-color: #2196f3;
+}
+
+.btn-refresh-logs {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #666;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-refresh-logs:hover {
+  background: #f0f0f0;
+  transform: rotate(180deg);
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.logs-header h4 {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Improved Animations */
+.program-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Status Indicator Animation */
+.status-indicator.connected {
+  animation: connectionPulse 2s ease-in-out infinite;
+}
+
+@keyframes connectionPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.9);
+  }
+}
+
 @media (max-width: 768px) {
   .programs-grid {
     grid-template-columns: 1fr;
   }
 
-  header {
+  .header-content {
     flex-direction: column;
     gap: 15px;
     text-align: center;
+    align-items: stretch;
+  }
+
+  .bulk-actions {
+    justify-content: center;
   }
 
   h1 {
     font-size: 1.5rem;
+  }
+
+  .toast-container {
+    left: 20px;
+    right: 20px;
+    max-width: none;
+  }
+
+  .program-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .logs-controls {
+    flex-wrap: wrap;
+  }
+
+  .log-search {
+    min-width: 100%;
   }
 }

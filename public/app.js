@@ -1,12 +1,69 @@
 // WebSocket connection
 let ws = null;
 let reconnectTimeout = null;
+let currentPrograms = [];
 
 // DOM elements
 const programsGrid = document.getElementById('programsGrid');
 const emptyState = document.getElementById('emptyState');
 const wsStatus = document.getElementById('wsStatus');
 const wsStatusText = document.getElementById('wsStatusText');
+const toastContainer = document.getElementById('toastContainer');
+
+// Toast Notification System
+function showToast(message, type = 'info', duration = 4000) {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  const icons = {
+    success: '✓',
+    error: '✗',
+    warning: '⚠',
+    info: 'ℹ'
+  };
+
+  toast.innerHTML = `
+    <div class="toast-icon">${icons[type] || icons.info}</div>
+    <div class="toast-content">
+      <div class="toast-message">${message}</div>
+    </div>
+    <button class="toast-close">✕</button>
+  `;
+
+  const closeBtn = toast.querySelector('.toast-close');
+  closeBtn.addEventListener('click', () => {
+    toast.remove();
+  });
+
+  toastContainer.appendChild(toast);
+
+  if (duration > 0) {
+    setTimeout(() => {
+      toast.style.animation = 'slideIn 0.3s ease-out reverse';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+}
+
+// Format uptime
+function formatUptime(milliseconds) {
+  if (!milliseconds) return 'N/A';
+
+  const seconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    return `${days}d ${hours % 24}h ${minutes % 60}m`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
+  }
+}
 
 // Connect to WebSocket
 function connectWebSocket() {
@@ -58,11 +115,14 @@ async function fetchPrograms() {
     updateProgramsDisplay(programs);
   } catch (error) {
     console.error('Error fetching programs:', error);
+    showToast('Failed to fetch programs', 'error');
   }
 }
 
 // Update programs display
 function updateProgramsDisplay(programs) {
+  currentPrograms = programs;
+
   if (!programs || programs.length === 0) {
     programsGrid.classList.add('hidden');
     emptyState.classList.remove('hidden');
@@ -107,9 +167,9 @@ function createProgramCard(program) {
   const btnLogs = card.querySelector('.btn-logs');
   const btnOpen = card.querySelector('.btn-open');
 
-  btnStart.addEventListener('click', () => startProgram(program.id));
-  btnStop.addEventListener('click', () => stopProgram(program.id));
-  btnRestart.addEventListener('click', () => restartProgram(program.id));
+  btnStart.addEventListener('click', () => startProgram(program.id, btnStart));
+  btnStop.addEventListener('click', () => stopProgram(program.id, btnStop));
+  btnRestart.addEventListener('click', () => restartProgram(program.id, btnRestart));
   btnLogs.addEventListener('click', () => toggleLogs(program.id, card));
 
   // Add click handler for Open button
@@ -117,6 +177,18 @@ function createProgramCard(program) {
     if (program.url) {
       window.open(program.url, '_blank');
     }
+  });
+
+  // Add log search functionality
+  const logSearch = card.querySelector('.log-search');
+  logSearch.addEventListener('input', (e) => {
+    filterLogs(card, e.target.value);
+  });
+
+  // Add refresh logs button
+  const btnRefresh = card.querySelector('.btn-refresh-logs');
+  btnRefresh.addEventListener('click', () => {
+    refreshLogs(program.id, card);
   });
 
   const btnCloseLogs = card.querySelector('.btn-close-logs');
@@ -142,6 +214,16 @@ function updateProgramCard(card, program) {
 
   card.querySelector('.program-path').textContent = program.path;
   card.querySelector('.program-pid').textContent = program.pid || 'N/A';
+
+  // Handle uptime display
+  const uptimeRow = card.querySelector('.program-uptime-row');
+  const uptimeValue = card.querySelector('.program-uptime');
+  if (program.status === 'running' && program.uptime) {
+    uptimeRow.classList.remove('hidden');
+    uptimeValue.textContent = formatUptime(program.uptime);
+  } else {
+    uptimeRow.classList.add('hidden');
+  }
 
   // Handle URL display
   const urlRow = card.querySelector('.program-url-row');
@@ -177,52 +259,80 @@ function updateProgramCard(card, program) {
   }
 }
 
+// Show loading state on button
+function setButtonLoading(button, loading) {
+  if (loading) {
+    button.classList.add('loading');
+    button.disabled = true;
+  } else {
+    button.classList.remove('loading');
+  }
+}
+
 // API functions
-async function startProgram(id) {
+async function startProgram(id, button) {
+  if (button) setButtonLoading(button, true);
+
   try {
     const response = await fetch(`/api/programs/${id}/start`, {
       method: 'POST'
     });
     const result = await response.json();
 
-    if (!result.success) {
-      alert(`Error: ${result.error}`);
+    if (result.success) {
+      showToast(`Started ${result.data.name || id}`, 'success');
+    } else {
+      showToast(`Failed to start: ${result.error}`, 'error');
     }
   } catch (error) {
     console.error('Error starting program:', error);
-    alert('Failed to start program');
+    showToast('Failed to start program', 'error');
+  } finally {
+    if (button) setButtonLoading(button, false);
   }
 }
 
-async function stopProgram(id) {
+async function stopProgram(id, button) {
+  if (button) setButtonLoading(button, true);
+
   try {
     const response = await fetch(`/api/programs/${id}/stop`, {
       method: 'POST'
     });
     const result = await response.json();
 
-    if (!result.success) {
-      alert(`Error: ${result.error}`);
+    if (result.success) {
+      showToast(`Stopped ${id}`, 'success');
+    } else {
+      showToast(`Failed to stop: ${result.error}`, 'error');
     }
   } catch (error) {
     console.error('Error stopping program:', error);
-    alert('Failed to stop program');
+    showToast('Failed to stop program', 'error');
+  } finally {
+    if (button) setButtonLoading(button, false);
   }
 }
 
-async function restartProgram(id) {
+async function restartProgram(id, button) {
+  if (button) setButtonLoading(button, true);
+
   try {
     const response = await fetch(`/api/programs/${id}/restart`, {
       method: 'POST'
     });
     const result = await response.json();
 
-    if (!result.success) {
-      alert(`Error: ${result.error}`);
+    if (result.success) {
+      showToast(`Restarted ${result.data.name || id}`, 'success');
+    } else {
+      showToast(`Failed to restart: ${result.error}`, 'error');
     }
   } catch (error) {
     console.error('Error restarting program:', error);
-    alert('Failed to restart program');
+    showToast('Failed to restart program', 'error');
+  } finally {
+    if (button) setButtonLoading(button, false);
   }
 }
 
@@ -235,28 +345,133 @@ async function toggleLogs(id, card) {
     return;
   }
 
+  await loadLogs(id, card);
+  logsContainer.classList.remove('hidden');
+}
+
+async function loadLogs(id, card) {
+  const logsContent = card.querySelector('.logs-content');
+
   try {
     const response = await fetch(`/api/programs/${id}/logs?lines=100`);
     const logs = await response.json();
 
     if (logs.length === 0) {
       logsContent.textContent = 'No logs available';
+      logsContent.setAttribute('data-full-logs', '');
     } else {
-      logsContent.textContent = logs.map(log => `${log.time} ${log.text}`).join('\n');
+      const fullText = logs.map(log => `${log.time} ${log.text}`).join('\n');
+      logsContent.textContent = fullText;
+      logsContent.setAttribute('data-full-logs', fullText);
       // Scroll to bottom
       logsContent.scrollTop = logsContent.scrollHeight;
     }
-
-    logsContainer.classList.remove('hidden');
   } catch (error) {
     console.error('Error fetching logs:', error);
     logsContent.textContent = 'Error loading logs';
-    logsContainer.classList.remove('hidden');
+    showToast('Failed to load logs', 'error');
+  }
+}
+
+async function refreshLogs(id, card) {
+  await loadLogs(id, card);
+  const searchInput = card.querySelector('.log-search');
+  if (searchInput.value) {
+    filterLogs(card, searchInput.value);
+  }
+  showToast('Logs refreshed', 'info', 2000);
+}
+
+function filterLogs(card, searchTerm) {
+  const logsContent = card.querySelector('.logs-content');
+  const fullLogs = logsContent.getAttribute('data-full-logs') || '';
+
+  if (!searchTerm) {
+    logsContent.textContent = fullLogs;
+    return;
+  }
+
+  const lines = fullLogs.split('\n');
+  const filtered = lines.filter(line =>
+    line.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  logsContent.textContent = filtered.join('\n') || 'No matching logs found';
+}
+
+// Bulk Operations
+async function startAll() {
+  const stoppedPrograms = currentPrograms.filter(p => p.status === 'stopped');
+  if (stoppedPrograms.length === 0) {
+    showToast('No stopped programs to start', 'info');
+    return;
+  }
+
+  showToast(`Starting ${stoppedPrograms.length} program(s)...`, 'info', 2000);
+
+  for (const program of stoppedPrograms) {
+    await startProgram(program.id);
+    await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between starts
+  }
+}
+
+async function stopAll() {
+  const runningPrograms = currentPrograms.filter(p => p.status === 'running');
+  if (runningPrograms.length === 0) {
+    showToast('No running programs to stop', 'info');
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to stop ${runningPrograms.length} program(s)?`)) {
+    return;
+  }
+
+  showToast(`Stopping ${runningPrograms.length} program(s)...`, 'info', 2000);
+
+  for (const program of runningPrograms) {
+    await stopProgram(program.id);
+    await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between stops
+  }
+}
+
+async function restartAll() {
+  const runningPrograms = currentPrograms.filter(p => p.status === 'running');
+  if (runningPrograms.length === 0) {
+    showToast('No running programs to restart', 'info');
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to restart ${runningPrograms.length} program(s)?`)) {
+    return;
+  }
+
+  showToast(`Restarting ${runningPrograms.length} program(s)...`, 'info', 2000);
+
+  for (const program of runningPrograms) {
+    await restartProgram(program.id);
+    await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between restarts
   }
 }
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  // Setup bulk action buttons
+  document.getElementById('btnStartAll').addEventListener('click', startAll);
+  document.getElementById('btnStopAll').addEventListener('click', stopAll);
+  document.getElementById('btnRestartAll').addEventListener('click', restartAll);
+
   fetchPrograms();
   connectWebSocket();
+
+  // Periodically update uptime displays
+  setInterval(() => {
+    document.querySelectorAll('.program-uptime').forEach(element => {
+      const card = element.closest('.program-card');
+      const programId = card.getAttribute('data-program-id');
+      const program = currentPrograms.find(p => p.id === programId);
+      if (program && program.status === 'running' && program.uptime) {
+        element.textContent = formatUptime(program.uptime);
+      }
+    });
+  }, 1000);
 });
