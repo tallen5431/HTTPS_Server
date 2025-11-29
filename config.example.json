@@ -2,38 +2,47 @@
   "hostname": "auto",
   "programs": [
     {
-      "id": "codesmith-ollama",
-      "name": "CodeSmith Ollama Assistant",
-      "path": "/home/jupyter-tj/projects/CodeSmith_Ollama_Helper",
+      "id": "example-caddy-prefix-aware",
+      "name": "Example App (Caddy - Prefix Aware)",
+      "path": "/path/to/your/app",
+      "url": "/myapp",
       "env": {
         "HOST": "0.0.0.0",
-        "PORT": "8070",
-        "PUBLIC_BASE": "https://192.168.1.245:8443",
-        "URL_PREFIX": "/codesmith-ollama",
-        "OLLAMA_HOST": "http://127.0.0.1:11434",
-        "OLLAMA_MODEL": "qwen2.5-coder:7b"
+        "PORT": "8080",
+        "URL_PREFIX": "/myapp"
       },
-      "comment": "Ollama-based LLM helper tailored for CodeSmith (update path/IP as needed)"
+      "comment": "Caddy integration: url field creates reverse proxy. URL_PREFIX makes app prefix-aware. PUBLIC_BASE auto-injected."
     },
     {
-      "id": "example-app-1",
-      "name": "Example Application 1 (Auto URL)",
-      "path": "/path/to/your/app1",
+      "id": "example-caddy-strip-prefix",
+      "name": "Example App (Caddy - Strip Prefix)",
+      "path": "/path/to/your/app2",
+      "url": "/app2",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8081"
+      },
+      "comment": "Caddy strips /app2 prefix before forwarding to app (uses handle_path). App sees requests at root path."
+    },
+    {
+      "id": "example-direct-access",
+      "name": "Example App (Direct Access - No Caddy)",
+      "path": "/path/to/your/standalone-app",
       "env": {
         "NODE_ENV": "production",
         "PORT": "8001"
       },
-      "comment": "URL auto-generated using detected IP (works from any device)"
+      "comment": "No url field = no Caddy integration. URL auto-generated as http://<detected-ip>:8001 for direct access."
     },
     {
-      "id": "example-app-2",
-      "name": "Example Application 2 (Manual URL)",
-      "path": "/path/to/your/app2",
+      "id": "example-manual-url",
+      "name": "Example App (Manual URL Override)",
+      "path": "/path/to/your/external-app",
       "url": "https://myapp.example.com",
       "env": {
         "PORT": "8002"
       },
-      "comment": "Manual URL overrides auto-generation"
+      "comment": "Manual URL overrides auto-generation. Useful for external domains or custom configurations."
     },
     {
       "id": "example-app-3",

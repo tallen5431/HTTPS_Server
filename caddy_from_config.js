@@ -26,6 +26,40 @@ const path = require('path');
 const { exec } = require('child_process');
 
 // -------------------------------
+// IP Detection
+// -------------------------------
+
+// Get primary network IP address
+function getPrimaryIpAddress() {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+
+  // Priority: eth0, en0, wlan0, or first available IPv4
+  const priorityInterfaces = ['eth0', 'en0', 'wlan0'];
+
+  for (const name of priorityInterfaces) {
+    if (nets[name]) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  }
+
+  // Fallback: find any non-internal IPv4
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+
+  return 'localhost';
+}
+
+// -------------------------------
 // Config + options
 // -------------------------------
 
@@ -43,10 +77,12 @@ function loadConfig() {
 }
 
 function getCaddyOptionsFromEnv() {
-  const defaultPublicBase = process.env.PUBLIC_BASE || 'https://192.168.1.245:8443';
+  // Auto-detect IP address for PUBLIC_BASE
+  const autoDetectedIp = getPrimaryIpAddress();
+  const defaultPublicBase = process.env.PUBLIC_BASE || `https://${autoDetectedIp}:8443`;
 
-  let domain = 'localhost';
-  let httpsPort = '443';
+  let domain = autoDetectedIp;
+  let httpsPort = '8443';
 
   try {
     const u = new URL(defaultPublicBase);
@@ -57,8 +93,8 @@ function getCaddyOptionsFromEnv() {
       httpsPort = '443';
     }
   } catch (err) {
-    console.warn('[caddy_from_config] Could not parse PUBLIC_BASE, using defaults:', err && err.message ? err.message : err);
-    domain = '192.168.1.245';
+    console.warn('[caddy_from_config] Could not parse PUBLIC_BASE, using auto-detected IP:', err && err.message ? err.message : err);
+    domain = autoDetectedIp;
     httpsPort = '8443';
   }
 
@@ -287,6 +323,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  getPrimaryIpAddress,
   getCaddyOptionsFromEnv,
   buildCaddyFromConfig: buildCaddyFromConfig,
   generateCaddyFromConfig,

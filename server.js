@@ -8,7 +8,7 @@ const { spawn, exec } = require('child_process');
 const express = require('express');
 const WebSocket = require('ws');
 const { URL } = require('url');
-const { generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');
+const { getPrimaryIpAddress, generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');
 
 // Configuration
 const CONFIG_FILE = process.env.CONFIG_FILE || './config.json';
@@ -20,36 +20,6 @@ const HOST = process.env.HOST || null; // Optional hostname override for URL gen
 // Process registry
 const processes = new Map();
 const processLogs = new Map();
-
-// Get primary network IP address for URL generation
-function getPrimaryIpAddress() {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-
-  // Priority: eth0, en0, wlan0, or first available IPv4
-  const priorityInterfaces = ['eth0', 'en0', 'wlan0'];
-
-  for (const name of priorityInterfaces) {
-    if (nets[name]) {
-      for (const net of nets[name]) {
-        if (net.family === 'IPv4' && !net.internal) {
-          return net.address;
-        }
-      }
-    }
-  }
-
-  // Fallback: find any non-internal IPv4
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-
-  return 'localhost';
-}
 
 // Load configuration (cached with mtime check)
 let cachedConfig = null;
@@ -376,9 +346,16 @@ function startProgram(programId, config) {
     console.warn(`Start script not found for program: ${programId}`);
   }
 
+  // Auto-inject PUBLIC_BASE if not already set
+  const autoDetectedIp = getPrimaryIpAddress();
+  const caddyPort = process.env.CADDY_HTTPS_PORT || '8443';
+  const autoPublicBase = `https://${autoDetectedIp}:${caddyPort}`;
+
   const env = {
     ...process.env,
-    ...program.env
+    ...program.env,
+    // Auto-inject PUBLIC_BASE if not already set (for Caddy reverse proxy apps)
+    PUBLIC_BASE: program.env?.PUBLIC_BASE || process.env.PUBLIC_BASE || autoPublicBase
   };
 
   const proc = spawn('bash', [startScript], {
