@@ -15,14 +15,19 @@ function resolveProgramUrl(rawUrl) {
   const trimmed = String(rawUrl).trim();
   if (!trimmed) return null;
 
-  // If this already looks like an absolute http(s) URL, use it as-is.
+  const loc = window.location || {};
+  const currentHostname = loc.hostname || 'localhost';
+
+  // If this already looks like an absolute http(s) URL, check if we need to rewrite localhost
   if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
+    // Replace localhost or 127.0.0.1 with the actual hostname used to access this page
+    // This ensures URLs work from remote clients accessing the manager
+    return trimmed
+      .replace(/localhost/g, currentHostname)
+      .replace(/127\.0\.0\.1/g, currentHostname);
   }
 
-  const loc = window.location || {};
   const protocol = loc.protocol || 'https:';
-  const hostname = loc.hostname || 'localhost';
   const currentPort = loc.port || '';
 
   // Prefer the public HTTPS port (8443) when we're not already on it.
@@ -30,7 +35,7 @@ function resolveProgramUrl(rawUrl) {
   const basePort = !currentPort || currentPort === preferredPort ? currentPort : preferredPort;
 
   const portSegment = basePort ? `:${basePort}` : '';
-  const origin = `${protocol}//${hostname}${portSegment}`;
+  const origin = `${protocol}//${currentHostname}${portSegment}`;
 
   // "/codesmith" -> origin + path
   if (trimmed.startsWith('/')) {

@@ -1,4 +1,5 @@
 {
+  "hostname": "auto",
   "programs": [
     {
       "id": "codesmith-ollama",
@@ -22,7 +23,7 @@
         "NODE_ENV": "production",
         "PORT": "8001"
       },
-      "comment": "URL will be auto-generated as http://localhost:8001"
+      "comment": "URL auto-generated using detected IP (works from any device)"
     },
     {
       "id": "example-app-2",

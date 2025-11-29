@@ -15,10 +15,41 @@ const CONFIG_FILE = process.env.CONFIG_FILE || './config.json';
 const PORT = process.env.PORT || 3000;
 const USE_HTTPS = process.env.USE_HTTPS !== 'false';
 const API_TOKEN = process.env.MANAGER_API_TOKEN || null;
+const HOST = process.env.HOST || null; // Optional hostname override for URL generation
 
 // Process registry
 const processes = new Map();
 const processLogs = new Map();
+
+// Get primary network IP address for URL generation
+function getPrimaryIpAddress() {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+
+  // Priority: eth0, en0, wlan0, or first available IPv4
+  const priorityInterfaces = ['eth0', 'en0', 'wlan0'];
+
+  for (const name of priorityInterfaces) {
+    if (nets[name]) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  }
+
+  // Fallback: find any non-internal IPv4
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+
+  return 'localhost';
+}
 
 // Load configuration (cached with mtime check)
 let cachedConfig = null;
@@ -173,13 +204,13 @@ function getProgramStatus(programId, config) {
     id: program.id,
     name: program.name,
     status: isRunning ? 'running' : 'stopped',
-    url: generateProgramUrl(program),
+    url: generateProgramUrl(program, config),
     pid: isRunning ? proc.pid : null,
     uptime: isRunning && proc.spawnDate ? Date.now() - proc.spawnDate : 0
   };
 }
 
-function generateProgramUrl(program) {
+function generateProgramUrl(program, config) {
   // If a URL is explicitly provided, use it
   if (program.url) {
     return program.url;
@@ -188,7 +219,10 @@ function generateProgramUrl(program) {
   // Otherwise, attempt to generate from PORT
   const port = program.env && (program.env.PORT || program.env.port);
   if (port) {
-    return `http://localhost:${port}`;
+    // Use configured hostname, or HOST env var, or auto-detected IP
+    // This makes URLs work from any device on the network
+    const hostname = (config && config.hostname) || HOST || getPrimaryIpAddress();
+    return `http://${hostname}:${port}`;
   }
 
   return null;
