@@ -4,6 +4,7 @@ A secure, self-configuring HTTPS server manager that automatically detects your 
 
 ## Features
 
+- **🔍 Auto-Discovery**: Automatically scans projects folder and generates configuration - zero manual setup!
 - **🎯 Automatic IP Detection**: Zero-configuration setup - automatically detects your server's network IP
 - **🔄 Auto Caddy Integration**: Generates Caddy reverse proxy configuration automatically from your programs
 - **🔐 HTTPS Support**: Secure connections with automatic self-signed certificate generation
@@ -14,12 +15,72 @@ A secure, self-configuring HTTPS server manager that automatically detects your 
 - **🎨 Clean Web UI**: Modern, responsive interface that works on desktop and mobile
 - **🌐 Multi-program Support**: Manage multiple applications from a single interface
 - **📦 PUBLIC_BASE Auto-Injection**: Automatically provides apps with correct base URL for reverse proxy
+- **🧠 Framework Detection**: Intelligently detects Flask, Django, FastAPI, Node.js, Streamlit and configures accordingly
 
 ## Prerequisites
 
 ...
 
 ## Configuration
+
+### Auto-Discovery (New!)
+
+The HTTPS Server Manager can automatically discover and configure all your projects!
+
+**Automatic Discovery on Startup:**
+```bash
+# Set PROJECTS_DIR and the manager will auto-generate config.json on first run
+PROJECTS_DIR=/path/to/your/projects node server.js
+```
+
+**Manual Discovery:**
+```bash
+# Scan projects directory and generate config.json
+node discover-projects.js /path/to/your/projects
+
+# Dry run (preview without saving)
+node discover-projects.js /path/to/your/projects --dry-run
+
+# Specify output file
+node discover-projects.js /path/to/your/projects --output my-config.json
+```
+
+**Web UI Rediscovery:**
+- Click the "🔍 Rediscover" button in the web interface
+- Scans projects directory and regenerates config.json
+- Automatically backs up existing config
+- All changes take effect immediately
+
+**What Gets Auto-Detected:**
+- ✅ All directories with `Start.sh` files
+- ✅ PORT from Start.sh (supports multiple patterns)
+- ✅ HOST configuration
+- ✅ Environment variables (from `export` statements)
+- ✅ Framework detection (Flask, Django, FastAPI, Node.js, Streamlit)
+- ✅ Project metadata from package.json, README.md
+- ✅ Automatic URL path generation for Caddy integration
+- ✅ Smart URL_PREFIX injection for Flask/Streamlit apps
+
+**Example Projects Structure:**
+```
+/home/user/projects/
+├── my-flask-app/
+│   ├── Start.sh          # Contains PORT=8001
+│   ├── app.py
+│   └── requirements.txt  # Contains flask
+├── my-node-app/
+│   ├── Start.sh          # Contains PORT=8002
+│   ├── package.json
+│   └── server.js
+└── my-streamlit-app/
+    ├── Start.sh          # Contains PORT=8003
+    └── app.py
+```
+
+After auto-discovery, all three projects will be automatically configured with:
+- Proper environment variables
+- Caddy reverse proxy URLs (/my-flask-app, /my-node-app, /my-streamlit-app)
+- Framework-specific configuration (URL_PREFIX for Flask/Streamlit)
 
 ### Hostname Configuration
 
@@ -190,6 +251,7 @@ For apps behind Caddy reverse proxy, set both `url` and appropriate environment 
 **Manager Configuration:**
 - `PORT`: Manager web UI port (default: `3000`)
 - `CONFIG_FILE`: Path to config file (default: `./config.json`)
+- `PROJECTS_DIR`: Path to projects directory for auto-discovery (optional)
 - `USE_HTTPS`: Enable/disable HTTPS for manager (default: `true`)
 - `HOST`: Hostname override for auto-generated program URLs (overrides config.hostname)
 - `MANAGER_API_TOKEN`: Optional shared secret; when set, write APIs (start/stop/restart/program restart-manager) and WebSocket clients must present this token

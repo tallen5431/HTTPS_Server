@@ -12,6 +12,7 @@ const { getPrimaryIpAddress, generateCaddyFromConfig, getCaddyOptionsFromEnv, wa
 
 // Configuration
 const CONFIG_FILE = process.env.CONFIG_FILE || './config.json';
+const PROJECTS_DIR = process.env.PROJECTS_DIR || null; // Optional: auto-discover projects from this directory
 const PORT = process.env.PORT || 3000;
 const USE_HTTPS = process.env.USE_HTTPS !== 'false';
 const API_TOKEN = process.env.MANAGER_API_TOKEN || null;
@@ -32,8 +33,31 @@ function loadConfig() {
       if (cachedConfig) {
         return cachedConfig;
       }
+
+      // Auto-discover projects if PROJECTS_DIR is set
+      if (PROJECTS_DIR && fs.existsSync(PROJECTS_DIR)) {
+        console.log(`\n🔍 Config file not found. Auto-discovering projects from: ${PROJECTS_DIR}`);
+        try {
+          const { discoverProjects, generateConfig } = require('./discover-projects');
+          const projects = discoverProjects(PROJECTS_DIR);
+          const autoConfig = generateConfig(projects);
+
+          // Save the auto-generated config
+          fs.writeFileSync(CONFIG_FILE, JSON.stringify(autoConfig, null, 2), 'utf8');
+          console.log(`✅ Auto-generated config.json with ${projects.length} project(s)\n`);
+
+          cachedConfig = autoConfig;
+          cachedConfigMtimeMs = null;
+          return autoConfig;
+        } catch (err) {
+          console.error('❌ Auto-discovery failed:', err.message);
+          console.log('   Falling back to empty config. You can manually create config.json\n');
+        }
+      }
+
       // Fallback default config so the UI can still start.
       const defaultConfig = {
+        hostname: 'auto',
         programs: [],
         ssl: {
           cert: './certs/server.crt',
@@ -431,6 +455,73 @@ function stopProgram(programId) {
 // Restart manager endpoint
 // This is meant to be used when running under a supervisor (e.g. systemd or another Server Manager) that
 // automatically restarts this process when it exits.
+// Rediscover projects and regenerate config
+app.post('/api/rediscover', requireApiToken, (req, res) => {
+  console.log('[manager] Rediscovery requested via /api/rediscover');
+
+  try {
+    const projectsDir = req.body.projectsDir || PROJECTS_DIR;
+
+    if (!projectsDir) {
+      return res.status(400).json({
+        success: false,
+        error: 'No projects directory specified. Set PROJECTS_DIR environment variable or provide projectsDir in request body.'
+      });
+    }
+
+    if (!fs.existsSync(projectsDir)) {
+      return res.status(404).json({
+        success: false,
+        error: `Projects directory not found: ${projectsDir}`
+      });
+    }
+
+    // Backup existing config
+    if (fs.existsSync(CONFIG_FILE)) {
+      const backupFile = CONFIG_FILE + '.backup.' + Date.now();
+      fs.copyFileSync(CONFIG_FILE, backupFile);
+      console.log(`[manager] Backed up config to: ${backupFile}`);
+    }
+
+    // Run discovery
+    const { discoverProjects, generateConfig } = require('./discover-projects');
+    const projects = discoverProjects(projectsDir);
+    const newConfig = generateConfig(projects);
+
+    // Save new config
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf8');
+    console.log(`[manager] Regenerated config with ${projects.length} project(s)`);
+
+    // Clear cache to force reload
+    cachedConfig = null;
+    cachedConfigMtimeMs = null;
+
+    // Regenerate Caddyfile
+    try {
+      const config = loadConfig();
+      const caddyOptions = getCaddyOptionsFromEnv();
+      generateCaddyFromConfig(config, caddyOptions);
+    } catch (err) {
+      console.error('[manager] Failed to regenerate Caddyfile:', err.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Rediscovered ${projects.length} project(s)`,
+      projectCount: projects.length
+    });
+
+    // Broadcast updated status to all clients
+    setTimeout(() => broadcastStatus(), 500);
+  } catch (err) {
+    console.error('[manager] Rediscovery failed:', err);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 app.post('/api/restart-manager', requireApiToken, (req, res) => {
   console.log('[manager] Restart requested via /api/restart-manager');
 

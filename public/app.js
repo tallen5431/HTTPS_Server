@@ -563,6 +563,34 @@ async function restartAll() {
   }
 }
 
+async function rediscoverProjects() {
+  if (!confirm('Rediscover all projects?\n\nThis will scan the projects directory and regenerate config.json.\nYour existing config will be backed up.')) {
+    return;
+  }
+
+  showToast('Rediscovering projects…', 'info', 3000);
+
+  try {
+    const response = await fetch('/api/rediscover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      showToast(`✅ Rediscovered ${data.projectCount} project(s)!`, 'success', 4000);
+      // Status will be updated automatically via WebSocket
+    } else {
+      showToast(`❌ Rediscovery failed: ${data.error}`, 'error', 5000);
+    }
+  } catch (err) {
+    console.error('Failed to call /api/rediscover:', err);
+    showToast('Failed to trigger project rediscovery', 'error', 4000);
+  }
+}
+
 async function restartManager() {
   if (!confirm('Restart HTTPS Server Manager now?\n\nThis will stop the manager process; make sure a supervisor (systemd, Server Manager, etc.) is configured to auto-restart it.')) {
     return;
@@ -597,6 +625,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnStartAll').addEventListener('click', startAll);
   document.getElementById('btnStopAll').addEventListener('click', stopAll);
   document.getElementById('btnRestartAll').addEventListener('click', restartAll);
+
+  const btnRediscover = document.getElementById('btnRediscover');
+  if (btnRediscover) {
+    btnRediscover.addEventListener('click', rediscoverProjects);
+  }
 
   const btnRestartManager = document.getElementById('btnRestartManager');
   if (btnRestartManager) {
