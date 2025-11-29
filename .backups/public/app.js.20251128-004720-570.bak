@@ -593,11 +593,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnStopAll').addEventListener('click', stopAll);
   document.getElementById('btnRestartAll').addEventListener('click', restartAll);
 
-  const btnRestartManager = document.getElementById('btnRestartManager');
-  if (btnRestartManager) {
-    btnRestartManager.addEventListener('click', restartManager);
-  }
-
   // Setup search functionality
   searchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value;

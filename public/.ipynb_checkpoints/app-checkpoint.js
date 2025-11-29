@@ -558,45 +558,12 @@ async function restartAll() {
   }
 }
 
-async function restartManager() {
-  if (!confirm('Restart HTTPS Server Manager now?\n\nThis will stop the manager process; make sure a supervisor (systemd, Server Manager, etc.) is configured to auto-restart it.')) {
-    return;
-  }
-
-  showToast('Restarting HTTPS Server Manager…', 'info', 3000);
-
-  try {
-    const response = await fetch('/api/restart-manager', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: 'user-request' })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json().catch(() => ({}));
-    if (data && data.message) {
-      showToast(data.message, 'success', 3000);
-    }
-  } catch (err) {
-    console.error('Failed to call /api/restart-manager:', err);
-    showToast('Failed to trigger HTTPS Server Manager restart', 'error', 4000);
-  }
-}
-
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   // Setup bulk action buttons
   document.getElementById('btnStartAll').addEventListener('click', startAll);
   document.getElementById('btnStopAll').addEventListener('click', stopAll);
   document.getElementById('btnRestartAll').addEventListener('click', restartAll);
-
-  const btnRestartManager = document.getElementById('btnRestartManager');
-  if (btnRestartManager) {
-    btnRestartManager.addEventListener('click', restartManager);
-  }
 
   // Setup search functionality
   searchInput.addEventListener('input', (e) => {

@@ -1,0 +1,123 @@
+{
+  "entries": [
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/public/app.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/public/app.js.20251127-200857-794.bak",
+      "timestamp": "2025-11-27T20:08:57.795222",
+      "description": "pre-modify public/app.js",
+      "size": 17462
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/public/app.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/public/app.js.20251127-200857-807.bak",
+      "timestamp": "2025-11-27T20:08:57.807876",
+      "description": "pre-modify public/app.js",
+      "size": 18321
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/public/app.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/public/app.js.20251127-200857-814.bak",
+      "timestamp": "2025-11-27T20:08:57.815139",
+      "description": "pre-modify public/app.js",
+      "size": 18371
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/public/app.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/public/app.js.20251127-212853-838.bak",
+      "timestamp": "2025-11-27T21:28:53.842165",
+      "description": "pre-modify public/app.js",
+      "size": 18426
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/config.example.json",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/config.example.json.20251127-235918-134.bak",
+      "timestamp": "2025-11-27T23:59:18.137648",
+      "description": "pre-modify config.example.json",
+      "size": 949
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/config.json",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/config.json.20251128-001926-632.bak",
+      "timestamp": "2025-11-28T00:19:26.633399",
+      "description": "pre-modify config.json",
+      "size": 2807
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/config.json",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/config.json.20251128-002851-025.bak",
+      "timestamp": "2025-11-28T00:28:51.025585",
+      "description": "pre-modify config.json",
+      "size": 2783
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/server.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/server.js.20251128-002851-032.bak",
+      "timestamp": "2025-11-28T00:28:51.032640",
+      "description": "pre-modify server.js",
+      "size": 11299
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/server.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/server.js.20251128-002851-036.bak",
+      "timestamp": "2025-11-28T00:28:51.036641",
+      "description": "pre-modify server.js",
+      "size": 11412
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/caddy_from_config.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/caddy_from_config.js.20251128-003147-083.bak",
+      "timestamp": "2025-11-28T00:31:47.084343",
+      "description": "pre-modify caddy_from_config.js",
+      "size": 4403
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/public/index.html",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/public/index.html.20251128-004706-591.bak",
+      "timestamp": "2025-11-28T00:47:06.592036",
+      "description": "pre-modify public/index.html",
+      "size": 4815
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/server.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/server.js.20251128-004706-598.bak",
+      "timestamp": "2025-11-28T00:47:06.599042",
+      "description": "pre-modify server.js",
+      "size": 11815
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/public/app.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/public/app.js.20251128-004720-565.bak",
+      "timestamp": "2025-11-28T00:47:20.565575",
+      "description": "pre-modify public/app.js",
+      "size": 18829
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/public/app.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/public/app.js.20251128-004720-570.bak",
+      "timestamp": "2025-11-28T00:47:20.570487",
+      "description": "pre-modify public/app.js",
+      "size": 19731
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/server.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/server.js.20251129-114941-842.bak",
+      "timestamp": "2025-11-29T11:49:41.845783",
+      "description": "pre-modify server.js",
+      "size": 12421
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/README.md",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/README.md.20251129-114941-852.bak",
+      "timestamp": "2025-11-29T11:49:41.853322",
+      "description": "pre-modify README.md",
+      "size": 9093
+    },
+    {
+      "path": "/home/jupyter-tj/HTTPS_Server/caddy_from_config.js",
+      "backup_path": "/home/jupyter-tj/HTTPS_Server/.backups/caddy_from_config.js.20251129-120124-098.bak",
+      "timestamp": "2025-11-29T12:01:24.099021",
+      "description": "pre-modify caddy_from_config.js",
+      "size": 8384
+    }
+  ]
+}

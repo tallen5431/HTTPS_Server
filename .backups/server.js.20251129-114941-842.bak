@@ -7,58 +7,39 @@ const path = require('path');
 const { spawn, exec } = require('child_process');
 const express = require('express');
 const WebSocket = require('ws');
-const { URL } = require('url');
 const { generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');
 
 // Configuration
 const CONFIG_FILE = process.env.CONFIG_FILE || './config.json';
 const PORT = process.env.PORT || 3000;
 const USE_HTTPS = process.env.USE_HTTPS !== 'false';
-const API_TOKEN = process.env.MANAGER_API_TOKEN || null;
 
 // Process registry
 const processes = new Map();
 const processLogs = new Map();
 
-// Load configuration (cached with mtime check)
-let cachedConfig = null;
-let cachedConfigMtimeMs = null;
-
+// Load configuration
 function loadConfig() {
   try {
-    if (!fs.existsSync(CONFIG_FILE)) {
-      // If we have a cached config, keep using it even if the file disappears.
-      if (cachedConfig) {
-        return cachedConfig;
-      }
-      // Fallback default config so the UI can still start.
-      const defaultConfig = {
-        programs: [],
-        ssl: {
-          cert: './certs/server.crt',
-          key: './certs/server.key',
-          autoGenerate: true
-        }
-      };
-      cachedConfig = defaultConfig;
-      cachedConfigMtimeMs = null;
-      return defaultConfig;
-    }
-
-    const stats = fs.statSync(CONFIG_FILE);
-    if (!cachedConfig || stats.mtimeMs !== cachedConfigMtimeMs) {
+    if (fs.existsSync(CONFIG_FILE)) {
       const data = fs.readFileSync(CONFIG_FILE, 'utf8');
       const config = JSON.parse(data);
       validateConfig(config);
-      cachedConfig = config;
-      cachedConfigMtimeMs = stats.mtimeMs;
+      return config;
     }
-
-    return cachedConfig;
   } catch (err) {
     console.error('Error loading config:', err.message);
     throw err;
   }
+
+  return {
+    programs: [],
+    ssl: {
+      cert: './certs/server.crt',
+      key: './certs/server.key',
+      autoGenerate: true
+    }
+  };
 }
 
 // Validate configuration
@@ -87,15 +68,10 @@ function validateConfig(config) {
     }
     seenIds.add(program.id);
 
-    // Ensure env object exists
-    if (!program.env || typeof program.env !== 'object') {
-      program.env = {};
-    }
-
-    // If url is provided but not a string, warn
-    if (program.url && typeof program.url !== 'string') {
-      console.warn(`Program "${program.id}" has a non-string url; this will be ignored.`);
-      delete program.url;
+    // Warn about missing Start.sh (don't fail, just warn)
+    const startScript = path.join(program.path, 'Start.sh');
+    if (!fs.existsSync(startScript)) {
+      console.warn(`Warning: Start.sh not found for program "${program.id}" at ${startScript}`);
     }
   });
 
@@ -113,8 +89,7 @@ function generateSelfSignedCert(certPath, keyPath) {
     }
 
     // Generate self-signed certificate using openssl
-    const cmd = `
-openssl req -x509 -newkey rsa:4096 -keyout "${keyPath}" -out "${certPath}" -days 365 -nodes -subj "/CN=localhost"`;
+    const cmd = `openssl req -x509 -newkey rsa:4096 -keyout "${keyPath}" -out "${certPath}" -days 365 -nodes -subj "/CN=localhost"`;
 
     exec(cmd, (error) => {
       if (error) {
@@ -132,66 +107,142 @@ async function getSSLCredentials(config) {
   const certPath = config.ssl.cert;
   const keyPath = config.ssl.key;
 
-  // If cert or key doesn't exist and autoGenerate is enabled, generate them
-  if (config.ssl.autoGenerate && (!fs.existsSync(certPath) || !fs.existsSync(keyPath))) {
-    console.log('Generating self-signed certificate...');
-    await generateSelfSignedCert(certPath, keyPath);
+  // Check if certificates exist
+  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+    if (config.ssl.autoGenerate) {
+      console.log('SSL certificates not found. Generating self-signed certificate...');
+      await generateSelfSignedCert(certPath, keyPath);
+    } else {
+      throw new Error('SSL certificates not found and autoGenerate is disabled');
+    }
   }
 
-  // Load SSL credentials
   return {
     key: fs.readFileSync(keyPath),
     cert: fs.readFileSync(certPath)
   };
 }
 
-// Program management
-function getProgramConfig(programId, config) {
+// Process management functions
+function startProgram(programId, config) {
+  if (processes.has(programId)) {
+    const proc = processes.get(programId);
+    if (proc && !proc.killed) {
+      throw new Error('Program is already running');
+    }
+  }
+
   const program = config.programs.find(p => p.id === programId);
   if (!program) {
-    throw new Error(`Program not found: ${programId}`);
+    throw new Error('Program not found');
   }
-  return program;
+
+  const startScript = path.join(program.path, 'Start.sh');
+  if (!fs.existsSync(startScript)) {
+    throw new Error(`Start.sh not found in ${program.path}`);
+  }
+
+  // Initialize logs
+  if (!processLogs.has(programId)) {
+    processLogs.set(programId, []);
+  }
+
+  const logs = processLogs.get(programId);
+  logs.length = 0; // Clear old logs
+
+  // Start the process
+  const proc = spawn('bash', [startScript], {
+    cwd: program.path,
+    env: { ...process.env, ...program.env },
+    detached: false
+  });
+
+  proc.stdout.on('data', (data) => {
+    const line = `[stdout] ${data.toString()}`;
+    logs.push({ time: new Date().toISOString(), text: line });
+    if (logs.length > 1000) logs.shift(); // Keep last 1000 lines
+    broadcastStatus();
+  });
+
+  proc.stderr.on('data', (data) => {
+    const line = `[stderr] ${data.toString()}`;
+    logs.push({ time: new Date().toISOString(), text: line });
+    if (logs.length > 1000) logs.shift();
+    broadcastStatus();
+  });
+
+  proc.on('exit', (code) => {
+    const line = `[system] Process exited with code ${code}`;
+    logs.push({ time: new Date().toISOString(), text: line });
+    broadcastStatus();
+  });
+
+  // Track spawn time for uptime calculation
+  proc.spawnDate = Date.now();
+
+  processes.set(programId, proc);
+
+  return {
+    id: programId,
+    name: program.name,
+    status: 'running',
+    pid: proc.pid
+  };
+}
+
+function stopProgram(programId) {
+  const proc = processes.get(programId);
+  if (!proc || proc.killed) {
+    throw new Error('Program is not running');
+  }
+
+  proc.kill('SIGTERM');
+
+  // Force kill after 10 seconds if still running
+  setTimeout(() => {
+    if (!proc.killed) {
+      proc.kill('SIGKILL');
+    }
+  }, 10000);
+
+  return { id: programId, status: 'stopped' };
+}
+
+// Auto-generate URL based on program configuration
+function generateProgramUrl(program) {
+  // If URL is explicitly provided, use it
+  if (program.url) {
+    return program.url;
+  }
+
+  // Try to auto-generate from PORT environment variable
+  if (program.env && program.env.PORT) {
+    const port = program.env.PORT;
+    return `http://localhost:${port}`;
+  }
+
+  // No URL can be generated
+  return null;
 }
 
 function getProgramStatus(programId, config) {
   const program = config.programs.find(p => p.id === programId);
   if (!program) {
-    return {
-      id: programId,
-      name: programId,
-      status: 'missing',
-      url: null,
-      pid: null
-    };
+    return null;
   }
 
   const proc = processes.get(programId);
   const isRunning = proc && !proc.killed;
 
   return {
-    id: program.id,
+    id: programId,
     name: program.name,
-    status: isRunning ? 'running' : 'stopped',
+    path: program.path,
     url: generateProgramUrl(program),
+    status: isRunning ? 'running' : 'stopped',
     pid: isRunning ? proc.pid : null,
     uptime: isRunning && proc.spawnDate ? Date.now() - proc.spawnDate : 0
   };
-}
-
-function generateProgramUrl(program) {
-  // If a URL is explicitly provided, use it
-  if (program.url) {
-    return program.url;
-  }
-
-  // Otherwise, attempt to generate from PORT
-  const port = program.env && (program.env.PORT || program.env.port);
-  if (port) {
-    return `http://localhost:${port}`;
-  }
-
-  return null;
 }
 
 function getAllProgramsStatus(config) {
@@ -223,33 +274,6 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// Simple token-based authentication for write APIs.
-// If MANAGER_API_TOKEN is not set, auth is effectively disabled and all requests are allowed.
-function getRequestToken(req) {
-  const header = req.headers['authorization'] || '';
-  if (header.startsWith('Bearer ')) {
-    return header.slice(7).trim();
-  }
-  if (req.query && typeof req.query.token === 'string') {
-    return req.query.token;
-  }
-  if (req.body && typeof req.body.token === 'string') {
-    return req.body.token;
-  }
-  return null;
-}
-
-function requireApiToken(req, res, next) {
-  if (!API_TOKEN) {
-    return next();
-  }
-  const token = getRequestToken(req);
-  if (token === API_TOKEN) {
-    return next();
-  }
-  res.status(401).json({ success: false, error: 'Unauthorized' });
-}
-
 // API Routes
 app.get('/api/programs', (req, res) => {
   const config = loadConfig();
@@ -257,7 +281,7 @@ app.get('/api/programs', (req, res) => {
   res.json(status);
 });
 
-app.post('/api/programs/:id/start', requireApiToken, (req, res) => {
+app.post('/api/programs/:id/start', (req, res) => {
   try {
     const config = loadConfig();
     const result = startProgram(req.params.id, config);
@@ -267,7 +291,7 @@ app.post('/api/programs/:id/start', requireApiToken, (req, res) => {
   }
 });
 
-app.post('/api/programs/:id/stop', requireApiToken, (req, res) => {
+app.post('/api/programs/:id/stop', (req, res) => {
   try {
     const result = stopProgram(req.params.id);
     res.json({ success: true, data: result });
@@ -276,7 +300,7 @@ app.post('/api/programs/:id/stop', requireApiToken, (req, res) => {
   }
 });
 
-app.post('/api/programs/:id/restart', requireApiToken, (req, res) => {
+app.post('/api/programs/:id/restart', (req, res) => {
   try {
     const config = loadConfig();
     stopProgram(req.params.id);
@@ -323,104 +347,16 @@ app.get('/api/stats', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
-// Start programs and manage processes
-function startProgram(programId, config) {
-  const program = getProgramConfig(programId, config);
-  const existingProcess = processes.get(programId);
-
-  if (existingProcess && !existingProcess.killed) {
-    throw new Error('Program is already running');
-  }
-
-  const startScript = path.join(program.path, 'Start.sh');
-
-  if (!fs.existsSync(startScript)) {
-    console.warn(`Start script not found for program: ${programId}`);
-  }
-
-  const env = {
-    ...process.env,
-    ...program.env
-  };
-
-  const proc = spawn('bash', [startScript], {
-    cwd: program.path,
-    env
-  });
-
-  const logs = [];
-  processLogs.set(programId, logs);
-
-  proc.stdout.on('data', (data) => {
-    const lines = data.toString().split('\n').filter(Boolean);
-    lines.forEach(line => {
-      logs.push({ time: new Date().toISOString(), text: line });
-      if (logs.length > 1000) {
-        logs.shift();
-      }
-    });
-    broadcastStatus();
-  });
-
-  proc.stderr.on('data', (data) => {
-    const lines = data.toString().split('\n').filter(Boolean);
-    lines.forEach(line => {
-      logs.push({ time: new Date().toISOString(), text: `[ERR] ${line}` });
-      if (logs.length > 1000) {
-        logs.shift();
-      }
-    });
-    broadcastStatus();
-  });
-
-  proc.on('exit', (code) => {
-    const line = `[system] Process exited with code ${code}`;
-    logs.push({ time: new Date().toISOString(), text: line });
-    broadcastStatus();
-  });
-
-  // Track spawn time for uptime calculation
-  proc.spawnDate = Date.now();
-
-  processes.set(programId, proc);
-
-  return {
-    id: programId,
-    name: program.name,
-    status: 'running',
-    pid: proc.pid
-  };
-}
-
-function stopProgram(programId) {
-  const proc = processes.get(programId);
-  if (!proc || proc.killed) {
-    throw new Error('Program is not running');
-  }
-
-  proc.kill('SIGTERM');
-
-  // Force kill after 10 seconds if still running
-  setTimeout(() => {
-    if (!proc.killed) {
-      proc.kill('SIGKILL');
-    }
-  }, 10000);
-
-  return {
-    id: programId,
-    status: 'stopping'
-  };
-}
-
-// Restart manager endpoint
-// This is meant to be used when running under a supervisor (e.g. systemd or another Server Manager) that
+// Restart HTTPS Server Manager process
+// NOTE: For this to act as a restart, run the manager under a
+// supervisor (systemd, pm2, or your outer Server Manager) that
 // automatically restarts this process when it exits.
-app.post('/api/restart-manager', requireApiToken, (req, res) => {
+app.post('/api/restart-manager', (req, res) => {
   console.log('[manager] Restart requested via /api/restart-manager');
 
   res.json({
@@ -471,27 +407,12 @@ async function startServer() {
   // WebSocket server
   const wss = new WebSocket.Server({ server });
 
-  wss.on('connection', (ws, req) => {
-    // Optional auth: require MANAGER_API_TOKEN for WebSocket clients when set.
-    if (API_TOKEN) {
-      try {
-        const url = new URL(req.url, 'http://localhost');
-        const token = url.searchParams.get('token');
-        if (token !== API_TOKEN) {
-          ws.close(1008, 'Unauthorized');
-          return;
-        }
-      } catch (err) {
-        ws.close(1008, 'Unauthorized');
-        return;
-      }
-    }
-
+  wss.on('connection', (ws) => {
     wsClients.add(ws);
     console.log('WebSocket client connected');
 
-    // Send initial status with the latest config
-    const status = getAllProgramsStatus(loadConfig());
+    // Send initial status
+    const status = getAllProgramsStatus(config);
     ws.send(JSON.stringify({ type: 'status', data: status }));
 
     ws.on('close', () => {
@@ -503,8 +424,7 @@ async function startServer() {
   server.listen(PORT, () => {
     const protocol = USE_HTTPS ? 'https' : 'http';
     console.log(`✓ Server running on ${protocol}://localhost:${PORT}`);
-    const activeConfig = loadConfig();
-    console.log(`✓ Loaded ${activeConfig.programs.length} program(s)`);
+    console.log(`✓ Loaded ${config.programs.length} program(s)`);
     console.log('\nAccess the web interface at:');
     console.log(`  ${protocol}://localhost:${PORT}`);
 
@@ -512,34 +432,30 @@ async function startServer() {
     const { networkInterfaces } = require('os');
     const nets = networkInterfaces();
 
-    Object.keys(nets).forEach((name) => {
-      nets[name].forEach((net) => {
-        // Skip internal and non-IPv4
-        if (net.internal || net.family !== 'IPv4') return;
-
-        console.log(`  ${protocol}://${net.address}:${PORT}`);
-      });
-    });
-  });
-
-  // Graceful shutdown
-  process.on('SIGINT', () => {
-    console.log('\nShutting down server...');
-
-    server.close(() => {
-      console.log('Server stopped');
-      process.exit(0);
-    });
-
-    // Kill all running child processes
-    for (const [id, proc] of processes.entries()) {
-      if (!proc.killed) {
-        console.log(`Stopping ${id}...`);
-        proc.kill('SIGTERM');
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          console.log(`  ${protocol}://${net.address}:${PORT}`);
+        }
       }
     }
   });
 }
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\nShutting down...');
+
+  // Stop all running processes
+  for (const [id, proc] of processes) {
+    if (!proc.killed) {
+      console.log(`Stopping ${id}...`);
+      proc.kill('SIGTERM');
+    }
+  }
+
+  process.exit(0);
+});
 
 // Start the server
 startServer().catch(err => {

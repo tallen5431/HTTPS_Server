@@ -1,0 +1,436 @@
+#!/usr/bin/env node
+
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { spawn, exec } = require('child_process');
+const express = require('express');
+const WebSocket = require('ws');
+const { generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');
+
+// Configuration
+const CONFIG_FILE = process.env.CONFIG_FILE || './config.json';
+const PORT = process.env.PORT || 3000;
+const USE_HTTPS = process.env.USE_HTTPS !== 'false';
+
+// Process registry
+const processes = new Map();
+const processLogs = new Map();
+
+// Load configuration
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const data = fs.readFileSync(CONFIG_FILE, 'utf8');
+      const config = JSON.parse(data);
+      validateConfig(config);
+      return config;
+    }
+  } catch (err) {
+    console.error('Error loading config:', err.message);
+    throw err;
+  }
+
+  return {
+    programs: [],
+    ssl: {
+      cert: './certs/server.crt',
+      key: './certs/server.key',
+      autoGenerate: true
+    }
+  };
+}
+
+// Validate configuration
+function validateConfig(config) {
+  if (!config.programs || !Array.isArray(config.programs)) {
+    throw new Error('Config must have a "programs" array');
+  }
+
+  const seenIds = new Set();
+
+  config.programs.forEach((program, index) => {
+    // Check required fields
+    if (!program.id) {
+      throw new Error(`Program at index ${index} is missing required field: "id"`);
+    }
+    if (!program.name) {
+      throw new Error(`Program "${program.id}" is missing required field: "name"`);
+    }
+    if (!program.path) {
+      throw new Error(`Program "${program.id}" is missing required field: "path"`);
+    }
+
+    // Check for duplicate IDs
+    if (seenIds.has(program.id)) {
+      throw new Error(`Duplicate program ID found: "${program.id}"`);
+    }
+    seenIds.add(program.id);
+
+    // Warn about missing Start.sh (don't fail, just warn)
+    const startScript = path.join(program.path, 'Start.sh');
+    if (!fs.existsSync(startScript)) {
+      console.warn(`Warning: Start.sh not found for program "${program.id}" at ${startScript}`);
+    }
+  });
+
+  return true;
+}
+
+// Generate self-signed certificate
+function generateSelfSignedCert(certPath, keyPath) {
+  return new Promise((resolve, reject) => {
+    const certDir = path.dirname(certPath);
+
+    // Create certs directory if it doesn't exist
+    if (!fs.existsSync(certDir)) {
+      fs.mkdirSync(certDir, { recursive: true });
+    }
+
+    // Generate self-signed certificate using openssl
+    const cmd = `openssl req -x509 -newkey rsa:4096 -keyout "${keyPath}" -out "${certPath}" -days 365 -nodes -subj "/CN=localhost"`;
+
+    exec(cmd, (error) => {
+      if (error) {
+        reject(error);
+      } else {
+        console.log('✓ Self-signed certificate generated');
+        resolve();
+      }
+    });
+  });
+}
+
+// Get SSL credentials
+async function getSSLCredentials(config) {
+  const certPath = config.ssl.cert;
+  const keyPath = config.ssl.key;
+
+  // Check if certificates exist
+  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+    if (config.ssl.autoGenerate) {
+      console.log('SSL certificates not found. Generating self-signed certificate...');
+      await generateSelfSignedCert(certPath, keyPath);
+    } else {
+      throw new Error('SSL certificates not found and autoGenerate is disabled');
+    }
+  }
+
+  return {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
+  };
+}
+
+// Process management functions
+function startProgram(programId, config) {
+  if (processes.has(programId)) {
+    const proc = processes.get(programId);
+    if (proc && !proc.killed) {
+      throw new Error('Program is already running');
+    }
+  }
+
+  const program = config.programs.find(p => p.id === programId);
+  if (!program) {
+    throw new Error('Program not found');
+  }
+
+  const startScript = path.join(program.path, 'Start.sh');
+  if (!fs.existsSync(startScript)) {
+    throw new Error(`Start.sh not found in ${program.path}`);
+  }
+
+  // Initialize logs
+  if (!processLogs.has(programId)) {
+    processLogs.set(programId, []);
+  }
+
+  const logs = processLogs.get(programId);
+  logs.length = 0; // Clear old logs
+
+  // Start the process
+  const proc = spawn('bash', [startScript], {
+    cwd: program.path,
+    env: { ...process.env, ...program.env },
+    detached: false
+  });
+
+  proc.stdout.on('data', (data) => {
+    const line = `[stdout] ${data.toString()}`;
+    logs.push({ time: new Date().toISOString(), text: line });
+    if (logs.length > 1000) logs.shift(); // Keep last 1000 lines
+    broadcastStatus();
+  });
+
+  proc.stderr.on('data', (data) => {
+    const line = `[stderr] ${data.toString()}`;
+    logs.push({ time: new Date().toISOString(), text: line });
+    if (logs.length > 1000) logs.shift();
+    broadcastStatus();
+  });
+
+  proc.on('exit', (code) => {
+    const line = `[system] Process exited with code ${code}`;
+    logs.push({ time: new Date().toISOString(), text: line });
+    broadcastStatus();
+  });
+
+  // Track spawn time for uptime calculation
+  proc.spawnDate = Date.now();
+
+  processes.set(programId, proc);
+
+  return {
+    id: programId,
+    name: program.name,
+    status: 'running',
+    pid: proc.pid
+  };
+}
+
+function stopProgram(programId) {
+  const proc = processes.get(programId);
+  if (!proc || proc.killed) {
+    throw new Error('Program is not running');
+  }
+
+  proc.kill('SIGTERM');
+
+  // Force kill after 10 seconds if still running
+  setTimeout(() => {
+    if (!proc.killed) {
+      proc.kill('SIGKILL');
+    }
+  }, 10000);
+
+  return { id: programId, status: 'stopped' };
+}
+
+// Auto-generate URL based on program configuration
+function generateProgramUrl(program) {
+  // If URL is explicitly provided, use it
+  if (program.url) {
+    return program.url;
+  }
+
+  // Try to auto-generate from PORT environment variable
+  if (program.env && program.env.PORT) {
+    const port = program.env.PORT;
+    return `http://localhost:${port}`;
+  }
+
+  // No URL can be generated
+  return null;
+}
+
+function getProgramStatus(programId, config) {
+  const program = config.programs.find(p => p.id === programId);
+  if (!program) {
+    return null;
+  }
+
+  const proc = processes.get(programId);
+  const isRunning = proc && !proc.killed;
+
+  return {
+    id: programId,
+    name: program.name,
+    path: program.path,
+    url: generateProgramUrl(program),
+    status: isRunning ? 'running' : 'stopped',
+    pid: isRunning ? proc.pid : null,
+    uptime: isRunning && proc.spawnDate ? Date.now() - proc.spawnDate : 0
+  };
+}
+
+function getAllProgramsStatus(config) {
+  return config.programs.map(p => getProgramStatus(p.id, config));
+}
+
+function getProgramLogs(programId, lines = 100) {
+  const logs = processLogs.get(programId) || [];
+  return logs.slice(-lines);
+}
+
+// WebSocket broadcast
+const wsClients = new Set();
+
+function broadcastStatus() {
+  const config = loadConfig();
+  const status = getAllProgramsStatus(config);
+  const message = JSON.stringify({ type: 'status', data: status });
+
+  wsClients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}
+
+// Express app
+const app = express();
+app.use(express.json());
+app.use(express.static('public'));
+
+// API Routes
+app.get('/api/programs', (req, res) => {
+  const config = loadConfig();
+  const status = getAllProgramsStatus(config);
+  res.json(status);
+});
+
+app.post('/api/programs/:id/start', (req, res) => {
+  try {
+    const config = loadConfig();
+    const result = startProgram(req.params.id, config);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/programs/:id/stop', (req, res) => {
+  try {
+    const result = stopProgram(req.params.id);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/programs/:id/restart', (req, res) => {
+  try {
+    const config = loadConfig();
+    stopProgram(req.params.id);
+
+    // Wait a bit before restarting
+    setTimeout(() => {
+      const result = startProgram(req.params.id, config);
+      res.json({ success: true, data: result });
+    }, 1000);
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/programs/:id/logs', (req, res) => {
+  const lines = parseInt(req.query.lines) || 100;
+  const logs = getProgramLogs(req.params.id, lines);
+  res.json(logs);
+});
+
+app.get('/api/config', (req, res) => {
+  const config = loadConfig();
+  res.json(config);
+});
+
+// Stats endpoint
+app.get('/api/stats', (req, res) => {
+  const config = loadConfig();
+  const programs = getAllProgramsStatus(config);
+
+  const stats = {
+    total: programs.length,
+    running: programs.filter(p => p.status === 'running').length,
+    stopped: programs.filter(p => p.status === 'stopped').length,
+    uptime: programs
+      .filter(p => p.status === 'running')
+      .reduce((sum, p) => sum + (p.uptime || 0), 0)
+  };
+
+  res.json(stats);
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Start server
+async function startServer() {
+  const config = loadConfig();
+
+  console.log('HTTPS Server Manager');
+  console.log('===================');
+
+  let server;
+
+  if (USE_HTTPS) {
+    try {
+      const credentials = await getSSLCredentials(config);
+      server = https.createServer(credentials, app);
+      console.log(`✓ HTTPS enabled`);
+    } catch (err) {
+      console.error('Failed to setup HTTPS:', err.message);
+      console.log('Falling back to HTTP...');
+      server = http.createServer(app);
+    }
+  } else {
+    server = http.createServer(app);
+    console.log('✓ Running in HTTP mode');
+  }
+
+  // WebSocket server
+  const wss = new WebSocket.Server({ server });
+
+  wss.on('connection', (ws) => {
+    wsClients.add(ws);
+    console.log('WebSocket client connected');
+
+    // Send initial status
+    const status = getAllProgramsStatus(config);
+    ws.send(JSON.stringify({ type: 'status', data: status }));
+
+    ws.on('close', () => {
+      wsClients.delete(ws);
+      console.log('WebSocket client disconnected');
+    });
+  });
+
+  server.listen(PORT, () => {
+    const protocol = USE_HTTPS ? 'https' : 'http';
+    console.log(`✓ Server running on ${protocol}://localhost:${PORT}`);
+    console.log(`✓ Loaded ${config.programs.length} program(s)`);
+    console.log('\nAccess the web interface at:');
+    console.log(`  ${protocol}://localhost:${PORT}`);
+
+    // Get local IP addresses
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          console.log(`  ${protocol}://${net.address}:${PORT}`);
+        }
+      }
+    }
+  });
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\nShutting down...');
+
+  // Stop all running processes
+  for (const [id, proc] of processes) {
+    if (!proc.killed) {
+      console.log(`Stopping ${id}...`);
+      proc.kill('SIGTERM');
+    }
+  }
+
+  process.exit(0);
+});
+
+// Start the server
+startServer().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});

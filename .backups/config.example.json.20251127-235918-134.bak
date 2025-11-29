@@ -1,20 +1,6 @@
 {
   "programs": [
     {
-      "id": "codesmith-ollama",
-      "name": "CodeSmith Ollama Assistant",
-      "path": "/home/jupyter-tj/projects/CodeSmith_Ollama_Helper",
-      "env": {
-        "HOST": "0.0.0.0",
-        "PORT": "8070",
-        "PUBLIC_BASE": "https://192.168.1.245:8443",
-        "URL_PREFIX": "/codesmith-ollama",
-        "OLLAMA_HOST": "http://127.0.0.1:11434",
-        "OLLAMA_MODEL": "qwen2.5-coder:7b"
-      },
-      "comment": "Ollama-based LLM helper tailored for CodeSmith (update path/IP as needed)"
-    },
-    {
       "id": "example-app-1",
       "name": "Example Application 1 (Auto URL)",
       "path": "/path/to/your/app1",

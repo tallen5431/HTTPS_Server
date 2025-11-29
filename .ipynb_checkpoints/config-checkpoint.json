@@ -1,0 +1,102 @@
+{
+  "programs": [
+    {
+      "id": "codesmith-ollama",
+      "name": "CodeSmith Ollama Assistant",
+      "path": "/home/jupyter-tj/projects/CodeSmith_Ollama_Helper",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8070",
+        "PUBLIC_BASE": "https://192.168.1.245:8443",
+        "URL_PREFIX": "/codesmith-ollama",
+        "OLLAMA_HOST": "http://127.0.0.1:11434",
+        "OLLAMA_MODEL": "qwen2.5-coder:7b"
+      },
+      "comment": "Ollama-based LLM helper tailored for CodeSmith (update path/IP as needed)"
+    },
+    {
+      "id": "codesmith",
+      "name": "CodeSmith",
+      "path": "/home/jupyter-tj/projects/CodeSmith",
+      "url": "/codesmith",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8057",
+        "PYTHONUTF8": "1"
+      },
+      "comment": "Served via Caddy at /codesmith over HTTPS"
+    },
+    {
+      "id": "camscan",
+      "name": "CamScan",
+      "path": "/home/jupyter-tj/projects/CamScan",
+      "url": "/camscan",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8059"
+      },
+      "comment": "Served via Caddy at /camscan over HTTPS"
+    },
+    {
+      "id": "inventoryocr",
+      "name": "Inventoryocr",
+      "path": "/home/jupyter-tj/projects/InventoryOCR",
+      "url": "/inventory",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8001"
+      },
+      "comment": "Served via Caddy at /inventory over HTTPS"
+    },
+    {
+      "id": "temperature_sensor-(2)",
+      "name": "Temperature Sensor (2)",
+      "path": "/home/jupyter-tj/projects/Temperature_Sensor (2)",
+      "url": "/tempsensor",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8002"
+      },
+      "comment": "Served via Caddy at /tempsensor over HTTPS"
+    },
+    {
+      "id": "tempsensor_website",
+      "name": "TempSensor Website",
+      "path": "/home/jupyter-tj/projects/TempSensor_Website",
+      "url": "/tempsite",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8000"
+      },
+      "comment": "Static marketing site served via Caddy at /tempsite over HTTPS"
+    },
+    {
+      "id": "webcam_server",
+      "name": "Webcam Server",
+      "path": "/home/jupyter-tj/projects/Webcam_Server",
+      "url": "/webcam",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8090",
+        "CAM_INDEX": "0"
+      },
+      "comment": "Served via Caddy at /webcam over HTTPS"
+    },
+    {
+      "id": "scanvideo",
+      "name": "ScanVideo",
+      "path": "/home/jupyter-tj/projects/ScanVideo",
+      "url": "/scanvideo",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8091"
+      },
+      "comment": "Served via Caddy at /scanvideo over HTTPS"
+    }
+  ],
+  "ssl": {
+    "cert": "./certs/server.crt",
+    "key": "./certs/server.key",
+    "autoGenerate": true
+  }
+}

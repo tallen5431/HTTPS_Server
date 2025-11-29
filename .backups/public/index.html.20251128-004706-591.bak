@@ -26,9 +26,6 @@
         <button class="btn btn-primary btn-sm" id="btnRestartAll" title="Restart all running programs">
           <span>↻</span> Restart All
         </button>
-        <button class="btn btn-warning btn-sm" id="btnRestartManager" title="Restart the HTTPS Server Manager process">
-          <span>⟳</span> Restart Manager
-        </button>
       </div>
     </header>
 

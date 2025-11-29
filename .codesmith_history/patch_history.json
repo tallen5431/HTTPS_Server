@@ -1,0 +1,302 @@
+[
+  {
+    "timestamp": "2025-11-27T20:08:57.819314",
+    "patch_name": "Patch 2025-11-27 20:08",
+    "description": "",
+    "files_modified": [
+      "public/app.js",
+      "public/app.js",
+      "public/app.js"
+    ],
+    "summary": {
+      "total": 3,
+      "ok": 3,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "public/app.js",
+        "diff": "--- a/public/app.js+++ b/public/app.js@@ -3,6 +3,35 @@ let reconnectTimeout = null;\n let currentPrograms = [];\n let searchQuery = '';\n+\n+// Resolve a program URL against the current browser origin.\n+//\n+// Supports:\n+//   - Absolute URLs: \"https://example.com/app\" (returned as-is)\n+//   - Root-relative paths: \"/codesmith\" (origin + path)\n+//   - Simple paths: \"codesmith\" (origin + \"/\" + path)\n+function resolveProgramUrl(rawUrl) {\n+  if (!rawUrl) return null;\n+  const trimmed = String(rawUrl).trim();\n+  if (!trimmed) return null;\n+\n+  // If this already looks like an absolute http(s) URL, use it as-is.\n+  if (/^https?:\\/\\//i.test(trimmed)) {\n+    return trimmed;\n+  }\n+\n+  const origin = window.location.origin || '';\n+\n+  // \"/codesmith\" -> \"https://host:port/codesmith\"\n+  if (trimmed.startsWith('/')) {\n+    return origin + trimmed;\n+  }\n+\n+  // \"codesmith\" -> \"https://host:port/codesmith\"\n+  const base = origin.replace(/\\/+$/, '');\n+  const path = trimmed.replace(/^\\/+/, '');\n+  return `${base}/${path}`;\n+}\n \n // DOM elements\n const programsGrid = document.getElementById('programsGrid');\n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "public/app.js",
+        "diff": "--- a/public/app.js+++ b/public/app.js@@ -266,8 +266,9 @@ \n   // Add click handler for Open button\n   btnOpen.addEventListener('click', () => {\n-    if (program.url) {\n-      window.open(program.url, '_blank');\n+    const targetUrl = resolveProgramUrl(program.url);\n+    if (targetUrl) {\n+      window.open(targetUrl, '_blank');\n     }\n   });\n \n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "public/app.js",
+        "diff": "--- a/public/app.js+++ b/public/app.js@@ -323,10 +323,12 @@   const urlLink = card.querySelector('.program-url');\n   const btnOpen = card.querySelector('.btn-open');\n \n-  if (program.url) {\n+  const resolvedUrl = resolveProgramUrl(program.url);\n+\n+  if (resolvedUrl) {\n     urlRow.classList.remove('hidden');\n-    urlLink.href = program.url;\n-    urlLink.textContent = program.url;\n+    urlLink.href = resolvedUrl;\n+    urlLink.textContent = resolvedUrl;\n     btnOpen.classList.remove('hidden');\n   } else {\n     urlRow.classList.add('hidden');\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-27T21:28:53.847783",
+    "patch_name": "Patch 2025-11-27 21:28",
+    "description": "",
+    "files_modified": [
+      "public/app.js"
+    ],
+    "summary": {
+      "total": 1,
+      "ok": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "public/app.js",
+        "diff": "--- a/public/app.js+++ b/public/app.js@@ -20,14 +20,24 @@     return trimmed;\n   }\n \n-  const origin = window.location.origin || '';\n-\n-  // \"/codesmith\" -> \"https://host:port/codesmith\"\n+  const loc = window.location || {};\n+  const protocol = loc.protocol || 'https:';\n+  const hostname = loc.hostname || 'localhost';\n+  const currentPort = loc.port || '';\n+\n+  // Prefer the public HTTPS port (8443) when we're not already on it.\n+  const preferredPort = '8443';\n+  const basePort = !currentPort || currentPort === preferredPort ? currentPort : preferredPort;\n+\n+  const portSegment = basePort ? `:${basePort}` : '';\n+  const origin = `${protocol}//${hostname}${portSegment}`;\n+\n+  // \"/codesmith\" -> origin + path\n   if (trimmed.startsWith('/')) {\n     return origin + trimmed;\n   }\n \n-  // \"codesmith\" -> \"https://host:port/codesmith\"\n+  // \"codesmith\" -> origin + path\n   const base = origin.replace(/\\/+$/, '');\n   const path = trimmed.replace(/^\\/+/, '');\n   return `${base}/${path}`;\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-27T23:59:18.141469",
+    "patch_name": "Patch 2025-11-27 23:59",
+    "description": "",
+    "files_modified": [
+      "config.example.json"
+    ],
+    "summary": {
+      "total": 1,
+      "ok": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "config.example.json",
+        "diff": "--- a/config.example.json+++ b/config.example.json@@ -1,5 +1,19 @@ {\n   \"programs\": [\n+    {\n+      \"id\": \"codesmith-ollama\",\n+      \"name\": \"CodeSmith Ollama Assistant\",\n+      \"path\": \"/home/jupyter-tj/projects/CodeSmith_Ollama_Helper\",\n+      \"env\": {\n+        \"HOST\": \"0.0.0.0\",\n+        \"PORT\": \"8070\",\n+        \"PUBLIC_BASE\": \"https://192.168.1.245:8443\",\n+        \"URL_PREFIX\": \"/codesmith-ollama\",\n+        \"OLLAMA_HOST\": \"http://127.0.0.1:11434\",\n+        \"OLLAMA_MODEL\": \"qwen2.5-coder:7b\"\n+      },\n+      \"comment\": \"Ollama-based LLM helper tailored for CodeSmith (update path/IP as needed)\"\n+    },\n     {\n       \"id\": \"example-app-1\",\n       \"name\": \"Example Application 1 (Auto URL)\",\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-28T00:19:26.640949",
+    "patch_name": "Patch 2025-11-28 00:19",
+    "description": "Update config.json programs (including CodeSmith Ollama Helper) and add caddy_from_config.js to generate a Caddyfile from config.json.",
+    "files_modified": [
+      "config.json",
+      "caddy_from_config.js"
+    ],
+    "summary": {
+      "total": 2,
+      "ok": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "config.json",
+        "diff": "--- a/config.json+++ b/config.json@@ -13,7 +13,7 @@         \"OLLAMA_HOST\": \"http://127.0.0.1:11434\",\n         \"OLLAMA_MODEL\": \"qwen2.5-coder:7b\"\n       },\n-      \"comment\": \"Served via Caddy at /codesmith-ollama over HTTPS (Ollama-based LLM helper tailored for CodeSmith)\"\n+      \"comment\": \"Ollama-based LLM helper tailored for CodeSmith (update path/IP as needed)\"\n     },\n     {\n       \"id\": \"codesmith\",\n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "caddy_from_config.js",
+        "diff": "--- a/caddy_from_config.js+++ b/caddy_from_config.js@@ -0,0 +1,164 @@+#!/usr/bin/env node\n+\n+// Generate a Caddyfile from HTTPS_Server config.json\n+//\n+// Usage:\n+//   node caddy_from_config.js > Caddyfile.generated\n+//   CADDY_FILE_OUT=/etc/caddy/Caddyfile node caddy_from_config.js\n+//\n+// Env vars:\n+//   CONFIG_FILE   - path to config.json (default ./config.json)\n+//   PUBLIC_BASE   - fallback public base URL if not present in any program.env\n+//   MANAGER_PORT  - port of the HTTPS Server Manager UI (default 8061)\n+//   CADDY_FILE_OUT- path to write Caddyfile (optional; otherwise writes to stdout)\n+\n+const fs = require('fs');\n+const path = require('path');\n+\n+const CONFIG_FILE = process.env.CONFIG_FILE || path.join(__dirname, 'config.json');\n+const OUTPUT_FILE = process.env.CADDY_FILE_OUT || null;\n+\n+function loadConfig() {\n+  try {\n+    const raw = fs.readFileSync(CONFIG_FILE, 'utf8');\n+    return JSON.parse(raw);\n+  } catch (err) {\n+    console.error('[caddy_from_config] Failed to read config file:', CONFIG_FILE);\n+    console.error(err.message);\n+    process.exit(1);\n+  }\n+}\n+\n+function pickPublicBase(config) {\n+  // Prefer PUBLIC_BASE from any program\n+  if (config && Array.isArray(config.programs)) {\n+    for (const prog of config.programs) {\n+      if (prog && prog.env && prog.env.PUBLIC_BASE) {\n+        return String(prog.env.PUBLIC_BASE).trim();\n+      }\n+    }\n+  }\n+\n+  if (process.env.PUBLIC_BASE) {\n+    return String(process.env.PUBLIC_BASE).trim();\n+  }\n+\n+  // Fallback to your current setup\n+  return 'https://192.168.1.245:8443';\n+}\n+\n+function parseHostAndPort(publicBase) {\n+  let host = '192.168.1.245';\n+  let httpsPort = '8443';\n+\n+  try {\n+    const u = new URL(publicBase);\n+    if (u.hostname) host = u.hostname;\n+    if (u.port) {\n+      httpsPort = u.port;\n+    } else if (u.protocol === 'https:') {\n+      httpsPort = '443';\n+    }\n+  } catch (err) {\n+    console.warn('[caddy_from_config] Warning: unable to parse PUBLIC_BASE, using defaults:', publicBase);\n+  }\n+\n+  return { host, httpsPort };\n+}\n+\n+function derivePathPrefix(urlValue) {\n+  if (!urlValue) return null;\n+  let u = String(urlValue).trim();\n+\n+  // If full URL, extract pathname\n+  if (u.startsWith('http://') || u.startsWith('https://')) {\n+    try {\n+      const parsed = new URL(u);\n+      u = parsed.pathname || '/';\n+    } catch {\n+      // leave as-is\n+    }\n+  }\n+\n+  if (!u.startsWith('/')) u = '/' + u;\n+  if (u === '/') return null;\n+\n+  return u;\n+}\n+\n+function buildCaddyfile(config) {\n+  const publicBase = pickPublicBase(config);\n+  const { host, httpsPort } = parseHostAndPort(publicBase);\n+  const managerPort = process.env.MANAGER_PORT || '8061';\n+\n+  const lines = [];\n+\n+  lines.push('{');\n+  lines.push('    auto_https off');\n+  lines.push(`    https_port ${httpsPort}`);\n+  lines.push('}');\n+  lines.push('');\n+  lines.push(`https://${host} {`);\n+  lines.push('    tls /etc/ssl/caddy/nuc-selfsign.crt /etc/ssl/caddy/nuc-selfsign.key');\n+  lines.push('');\n+\n+  // HTTPS Server Manager UI itself\n+  lines.push('    # HTTPS Server Manager UI');\n+  lines.push('    handle_path /manager* {');\n+  lines.push(`        reverse_proxy 127.0.0.1:${managerPort}`);\n+  lines.push('    }');\n+  lines.push('');\n+\n+  if (config && Array.isArray(config.programs)) {\n+    for (const prog of config.programs) {\n+      if (!prog || !prog.id) continue;\n+      const env = prog.env || {};\n+      const port = env.PORT;\n+      const urlValue = prog.url;\n+\n+      if (!port || !urlValue) {\n+        // Without PORT or URL we cannot generate a proxy block\n+        continue;\n+      }\n+\n+      const prefix = derivePathPrefix(urlValue);\n+      if (!prefix) continue;\n+\n+      const displayName = prog.name || prog.id;\n+      lines.push(`    # ${displayName}`);\n+      lines.push(`    handle_path ${prefix}* {`);\n+      lines.push(`        reverse_proxy 127.0.0.1:${port}`);\n+      lines.push('    }');\n+      lines.push('');\n+    }\n+  }\n+\n+  lines.push('}');\n+  lines.push('');\n+\n+  return lines.join('\\n');\n+}\n+\n+function main() {\n+  const config = loadConfig();\n+  const caddyText = buildCaddyfile(config);\n+\n+  if (OUTPUT_FILE) {\n+    try {\n+      fs.writeFileSync(OUTPUT_FILE, caddyText, 'utf8');\n+      console.log(`[caddy_from_config] Wrote Caddyfile to ${OUTPUT_FILE}`);\n+    } catch (err) {\n+      console.error('[caddy_from_config] Failed to write Caddyfile:', OUTPUT_FILE);\n+      console.error(err.message);\n+      process.exit(1);\n+    }\n+  } else {\n+    process.stdout.write(caddyText);\n+  }\n+}\n+\n+if (require.main === module) {\n+  main();\n+}\n+\n+module.exports = { buildCaddyfileFromConfig: buildCaddyfile };\n",
+        "status": "ok",
+        "message": "created"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-28T00:28:51.040191",
+    "patch_name": "Patch 2025-11-28 00:28",
+    "description": "Add CodeSmith Ollama program to config.json and auto-generate a Caddyfile from config.json using caddy_from_config.js, wired into server.js.",
+    "files_modified": [
+      "config.json",
+      "server.js",
+      "server.js"
+    ],
+    "summary": {
+      "total": 4,
+      "ok": 3,
+      "skipped": 1,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "server.js",
+        "diff": "--- a/server.js+++ b/server.js@@ -7,6 +7,7 @@ const { spawn, exec } = require('child_process');\n const express = require('express');\n const WebSocket = require('ws');\n+const { generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');\n \n // Configuration\n const CONFIG_FILE = process.env.CONFIG_FILE || './config.json';\n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "server.js",
+        "diff": "--- a/server.js+++ b/server.js@@ -359,6 +359,15 @@   console.log('HTTPS Server Manager');\n   console.log('===================');\n \n+  // Auto-generate Caddyfile from config and watch for changes (optional)\n+  try {\n+    const caddyOptions = getCaddyOptionsFromEnv();\n+    generateCaddyFromConfig(config, caddyOptions);\n+    watchConfigForCaddy(CONFIG_FILE, caddyOptions, loadConfig, generateCaddyFromConfig);\n+  } catch (err) {\n+    console.error('[Caddy] Failed to generate/update Caddyfile:', err && err.message ? err.message : err);\n+  }\n+\n   let server;\n \n   if (USE_HTTPS) {\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-28T00:31:47.090229",
+    "patch_name": "Patch 2025-11-28 00:31",
+    "description": "Replace caddy_from_config.js with an auto-generating, watch-capable version that matches server.js imports.",
+    "files_modified": [
+      "caddy_from_config.js"
+    ],
+    "summary": {
+      "total": 1,
+      "ok": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "caddy_from_config.js",
+        "diff": "--- a/caddy_from_config.js+++ b/caddy_from_config.js@@ -1,22 +1,35 @@ #!/usr/bin/env node\n \n-// Generate a Caddyfile from HTTPS_Server config.json\n+// Caddyfile generator for HTTPS_Server\n+// ------------------------------------\n //\n-// Usage:\n+// Can be run manually:\n //   node caddy_from_config.js > Caddyfile.generated\n-//   CADDY_FILE_OUT=/etc/caddy/Caddyfile node caddy_from_config.js\n+//   CADDYFILE_PATH=/etc/caddy/Caddyfile node caddy_from_config.js\n+//\n+// Or used programmatically from server.js:\n+//   const { generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');\n //\n // Env vars:\n-//   CONFIG_FILE   - path to config.json (default ./config.json)\n-//   PUBLIC_BASE   - fallback public base URL if not present in any program.env\n-//   MANAGER_PORT  - port of the HTTPS Server Manager UI (default 8061)\n-//   CADDY_FILE_OUT- path to write Caddyfile (optional; otherwise writes to stdout)\n+//   CONFIG_FILE      - path to config.json (default ./config.json)\n+//   PUBLIC_BASE      - fallback PUBLIC_BASE if not present in programs\n+//   CADDYFILE_PATH   - where to write the generated Caddyfile (default ./Caddyfile.generated)\n+//   CADDY_FILE_OUT   - legacy alias for CADDYFILE_PATH\n+//   CADDY_TLS_CERT   - TLS cert path (default /etc/ssl/caddy/nuc-selfsign.crt)\n+//   CADDY_TLS_KEY    - TLS key path (default /etc/ssl/caddy/nuc-selfsign.key)\n+//   MANAGER_PORT     - internal port for HTTPS Server Manager (default 8061)\n+//   CADDY_MANAGER_PATH - URL path for Manager UI (default /manager)\n+//   CADDY_RELOAD_CMD - optional shell command to reload Caddy after write\n \n const fs = require('fs');\n const path = require('path');\n+const { exec } = require('child_process');\n+\n+// -------------------------------\n+// Config + options\n+// -------------------------------\n \n const CONFIG_FILE = process.env.CONFIG_FILE || path.join(__dirname, 'config.json');\n-const OUTPUT_FILE = process.env.CADDY_FILE_OUT || null;\n \n function loadConfig() {\n   try {\n@@ -24,53 +37,54 @@     return JSON.parse(raw);\n   } catch (err) {\n     console.error('[caddy_from_config] Failed to read config file:', CONFIG_FILE);\n-    console.error(err.message);\n-    process.exit(1);\n-  }\n-}\n-\n-function pickPublicBase(config) {\n-  // Prefer PUBLIC_BASE from any program\n-  if (config && Array.isArray(config.programs)) {\n-    for (const prog of config.programs) {\n-      if (prog && prog.env && prog.env.PUBLIC_BASE) {\n-        return String(prog.env.PUBLIC_BASE).trim();\n-      }\n-    }\n-  }\n-\n-  if (process.env.PUBLIC_BASE) {\n-    return String(process.env.PUBLIC_BASE).trim();\n-  }\n-\n-  // Fallback to your current setup\n-  return 'https://192.168.1.245:8443';\n-}\n-\n-function parseHostAndPort(publicBase) {\n-  let host = '192.168.1.245';\n-  let httpsPort = '8443';\n+    console.error(err.message || err);\n+    return { programs: [] };\n+  }\n+}\n+\n+function getCaddyOptionsFromEnv() {\n+  const defaultPublicBase = process.env.PUBLIC_BASE || 'https://192.168.1.245:8443';\n+\n+  let domain = 'localhost';\n+  let httpsPort = '443';\n \n   try {\n-    const u = new URL(publicBase);\n-    if (u.hostname) host = u.hostname;\n+    const u = new URL(defaultPublicBase);\n+    if (u.hostname) domain = u.hostname;\n     if (u.port) {\n       httpsPort = u.port;\n     } else if (u.protocol === 'https:') {\n       httpsPort = '443';\n     }\n   } catch (err) {\n-    console.warn('[caddy_from_config] Warning: unable to parse PUBLIC_BASE, using defaults:', publicBase);\n-  }\n-\n-  return { host, httpsPort };\n-}\n+    console.warn('[caddy_from_config] Could not parse PUBLIC_BASE, using defaults:', err && err.message ? err.message : err);\n+    domain = '192.168.1.245';\n+    httpsPort = '8443';\n+  }\n+\n+  // Support both new and legacy env var names for output path\n+  const outputPath = process.env.CADDYFILE_PATH || process.env.CADDY_FILE_OUT || path.resolve(__dirname, 'Caddyfile.generated');\n+\n+  const tlsCert = process.env.CADDY_TLS_CERT || '/etc/ssl/caddy/nuc-selfsign.crt';\n+  const tlsKey = process.env.CADDY_TLS_KEY || '/etc/ssl/caddy/nuc-selfsign.key';\n+\n+  const managerPath = process.env.CADDY_MANAGER_PATH || '/manager';\n+  const managerPort = process.env.MANAGER_PORT || '8061';\n+\n+  const reloadCommand = process.env.CADDY_RELOAD_CMD || '';\n+\n+  return { outputPath, domain, httpsPort, tlsCert, tlsKey, managerPath, managerPort, reloadCommand };\n+}\n+\n+// -------------------------------\n+// Helpers\n+// -------------------------------\n \n function derivePathPrefix(urlValue) {\n   if (!urlValue) return null;\n   let u = String(urlValue).trim();\n \n-  // If full URL, extract pathname\n+  // If a full URL is given, extract pathname\n   if (u.startsWith('http://') || u.startsWith('https://')) {\n     try {\n       const parsed = new URL(u);\n@@ -83,37 +97,47 @@   if (!u.startsWith('/')) u = '/' + u;\n   if (u === '/') return null;\n \n-  return u;\n-}\n-\n-function buildCaddyfile(config) {\n-  const publicBase = pickPublicBase(config);\n-  const { host, httpsPort } = parseHostAndPort(publicBase);\n-  const managerPort = process.env.MANAGER_PORT || '8061';\n+  // Drop trailing slashes\n+  return u.replace(/\\/+$/, '');\n+}\n+\n+// -------------------------------\n+// Build Caddyfile text\n+// -------------------------------\n+\n+function buildCaddyFromConfig(config, options) {\n+  const cfg = config || {};\n+  const opts = options || getCaddyOptionsFromEnv();\n \n   const lines = [];\n \n+  lines.push('# This file is AUTO-GENERATED by HTTPS_Server/caddy_from_config.js');\n+  lines.push('# Do not edit this file directly; edit config.json instead.');\n+  lines.push('');\n   lines.push('{');\n   lines.push('    auto_https off');\n-  lines.push(`    https_port ${httpsPort}`);\n+  lines.push(`    https_port ${opts.httpsPort}`);\n   lines.push('}');\n   lines.push('');\n-  lines.push(`https://${host} {`);\n-  lines.push('    tls /etc/ssl/caddy/nuc-selfsign.crt /etc/ssl/caddy/nuc-selfsign.key');\n-  lines.push('');\n-\n-  // HTTPS Server Manager UI itself\n-  lines.push('    # HTTPS Server Manager UI');\n-  lines.push('    handle_path /manager* {');\n-  lines.push(`        reverse_proxy 127.0.0.1:${managerPort}`);\n-  lines.push('    }');\n-  lines.push('');\n-\n-  if (config && Array.isArray(config.programs)) {\n-    for (const prog of config.programs) {\n+  lines.push(`https://${opts.domain} {`);\n+  lines.push(`    tls ${opts.tlsCert} ${opts.tlsKey}`);\n+  lines.push('');\n+\n+  if (opts.managerPath && opts.managerPort) {\n+    lines.push('    # HTTPS Server Manager UI');\n+    lines.push(`    handle_path ${opts.managerPath}* {`);\n+    lines.push(`        reverse_proxy 127.0.0.1:${opts.managerPort}`);\n+    lines.push('    }');\n+    lines.push('');\n+  }\n+\n+  if (Array.isArray(cfg.programs)) {\n+    lines.push('    # Application programs from config.json');\n+\n+    for (const prog of cfg.programs) {\n       if (!prog || !prog.id) continue;\n       const env = prog.env || {};\n-      const port = env.PORT;\n+      const port = env.PORT || env.port;\n       const urlValue = prog.url;\n \n       if (!port || !urlValue) {\n@@ -139,26 +163,109 @@   return lines.join('\\n');\n }\n \n-function main() {\n-  const config = loadConfig();\n-  const caddyText = buildCaddyfile(config);\n-\n-  if (OUTPUT_FILE) {\n-    try {\n-      fs.writeFileSync(OUTPUT_FILE, caddyText, 'utf8');\n-      console.log(`[caddy_from_config] Wrote Caddyfile to ${OUTPUT_FILE}`);\n-    } catch (err) {\n-      console.error('[caddy_from_config] Failed to write Caddyfile:', OUTPUT_FILE);\n-      console.error(err.message);\n-      process.exit(1);\n+// -------------------------------\n+// Write + optional reload\n+// -------------------------------\n+\n+function writeCaddyfile(caddyText, options) {\n+  const opts = options || getCaddyOptionsFromEnv();\n+  const outPath = opts.outputPath;\n+  const dir = path.dirname(outPath);\n+\n+  if (!fs.existsSync(dir)) {\n+    fs.mkdirSync(dir, { recursive: true });\n+  }\n+\n+  fs.writeFileSync(outPath, caddyText, 'utf8');\n+  console.log(`[caddy_from_config] Wrote Caddyfile to ${outPath}`);\n+}\n+\n+function maybeReloadCaddy(options) {\n+  const opts = options || getCaddyOptionsFromEnv();\n+\n+  if (!opts.reloadCommand) {\n+    return;\n+  }\n+\n+  exec(opts.reloadCommand, (err, stdout, stderr) => {\n+    if (err) {\n+      console.error('[caddy_from_config] Failed to reload Caddy:', err && err.message ? err.message : err);\n+      if (stderr) console.error(stderr.trim());\n+      return;\n+    }\n+\n+    if (stdout) console.log(stdout.trim());\n+    console.log('[caddy_from_config] Reload command completed successfully.');\n+  });\n+}\n+\n+// -------------------------------\n+// Public API used by server.js\n+// -------------------------------\n+\n+function generateCaddyFromConfig(config, options) {\n+  const opts = options || getCaddyOptionsFromEnv();\n+  const text = buildCaddyFromConfig(config, opts);\n+  writeCaddyfile(text, opts);\n+  if (opts.reloadCommand) {\n+    maybeReloadCaddy(opts);\n+  }\n+  return opts.outputPath;\n+}\n+\n+function watchConfigForCaddy(configPath, options, loadConfigFn, generateFn) {\n+  const cfgPath = configPath || CONFIG_FILE;\n+\n+  if (!cfgPath || typeof fs.watch !== 'function') {\n+    return;\n+  }\n+\n+  try {\n+    fs.watch(cfgPath, { persistent: false }, (eventType) => {\n+      if (eventType !== 'change') return;\n+\n+      try {\n+        const loader = typeof loadConfigFn === 'function' ? loadConfigFn : loadConfig;\n+        const gen = typeof generateFn === 'function' ? generateFn : generateCaddyFromConfig;\n+        const cfg = loader() || {};\n+        gen(cfg, options);\n+        console.log('[caddy_from_config] Regenerated Caddyfile after config.json change.');\n+      } catch (err) {\n+        console.error('[caddy_from_config] Failed to regenerate Caddyfile on change:', err && err.message ? err.message : err);\n+      }\n+    });\n+\n+    console.log('[caddy_from_config] Watching config.json for changes to regenerate Caddyfile.');\n+  } catch (err) {\n+    console.warn('[caddy_from_config] Unable to watch config file for changes:', err && err.message ? err.message : err);\n+  }\n+}\n+\n+// -------------------------------\n+// CLI behavior (manual use)\n+// -------------------------------\n+\n+if (require.main === module) {\n+  const cfg = loadConfig();\n+  const opts = getCaddyOptionsFromEnv();\n+\n+  // If user is piping stdout, keep old behavior; if CADDYFILE_PATH/CADDY_FILE_OUT\n+  // is set, write to that path instead.\n+  const text = buildCaddyFromConfig(cfg, opts);\n+\n+  if (process.env.CADDYFILE_PATH || process.env.CADDY_FILE_OUT) {\n+    writeCaddyfile(text, opts);\n+    if (opts.reloadCommand) {\n+      maybeReloadCaddy(opts);\n     }\n   } else {\n-    process.stdout.write(caddyText);\n-  }\n-}\n-\n-if (require.main === module) {\n-  main();\n-}\n-\n-module.exports = { buildCaddyfileFromConfig: buildCaddyfile };\n+    process.stdout.write(text);\n+  }\n+}\n+\n+module.exports = {\n+  getCaddyOptionsFromEnv,\n+  buildCaddyFromConfig: buildCaddyFromConfig,\n+  generateCaddyFromConfig,\n+  watchConfigForCaddy\n+};\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-28T00:47:06.601910",
+    "patch_name": "Patch 2025-11-28 00:47",
+    "description": "Add a Restart Manager button to the HTTPS Server Manager UI and implement /api/restart-manager to exit the process so an external supervisor can restart it.",
+    "files_modified": [
+      "public/index.html",
+      "server.js"
+    ],
+    "summary": {
+      "total": 2,
+      "ok": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "public/index.html",
+        "diff": "--- a/public/index.html+++ b/public/index.html@@ -25,6 +25,9 @@         </button>\n         <button class=\"btn btn-primary btn-sm\" id=\"btnRestartAll\" title=\"Restart all running programs\">\n           <span>↻</span> Restart All\n+        </button>\n+        <button class=\"btn btn-warning btn-sm\" id=\"btnRestartManager\" title=\"Restart the HTTPS Server Manager process\">\n+          <span>⟳</span> Restart Manager\n         </button>\n       </div>\n     </header>\n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "server.js",
+        "diff": "--- a/server.js+++ b/server.js@@ -352,6 +352,25 @@   });\n });\n \n+// Restart HTTPS Server Manager process\n+// NOTE: For this to act as a restart, run the manager under a\n+// supervisor (systemd, pm2, or your outer Server Manager) that\n+// automatically restarts this process when it exits.\n+app.post('/api/restart-manager', (req, res) => {\n+  console.log('[manager] Restart requested via /api/restart-manager');\n+\n+  res.json({\n+    success: true,\n+    message: 'HTTPS Server Manager restarting…'\n+  });\n+\n+  // Give the HTTP response a moment to flush, then exit.\n+  setTimeout(() => {\n+    console.log('[manager] Exiting process for restart');\n+    process.exit(0);\n+  }, 1000);\n+});\n+\n // Start server\n async function startServer() {\n   const config = loadConfig();\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-28T00:47:20.573845",
+    "patch_name": "Patch 2025-11-28 00:47",
+    "description": "Add restartManager() helper and wire btnRestartManager in public/app.js.",
+    "files_modified": [
+      "public/app.js",
+      "public/app.js"
+    ],
+    "summary": {
+      "total": 2,
+      "ok": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "public/app.js",
+        "diff": "--- a/public/app.js+++ b/public/app.js@@ -558,6 +558,34 @@   }\n }\n \n+async function restartManager() {\n+  if (!confirm('Restart HTTPS Server Manager now?\\n\\nThis will stop the manager process; make sure a supervisor (systemd, Server Manager, etc.) is configured to auto-restart it.')) {\n+    return;\n+  }\n+\n+  showToast('Restarting HTTPS Server Manager…', 'info', 3000);\n+\n+  try {\n+    const response = await fetch('/api/restart-manager', {\n+      method: 'POST',\n+      headers: { 'Content-Type': 'application/json' },\n+      body: JSON.stringify({ reason: 'user-request' })\n+    });\n+\n+    if (!response.ok) {\n+      throw new Error(`HTTP ${response.status}`);\n+    }\n+\n+    const data = await response.json().catch(() => ({}));\n+    if (data && data.message) {\n+      showToast(data.message, 'success', 3000);\n+    }\n+  } catch (err) {\n+    console.error('Failed to call /api/restart-manager:', err);\n+    showToast('Failed to trigger HTTPS Server Manager restart', 'error', 4000);\n+  }\n+}\n+\n // Initialize\n document.addEventListener('DOMContentLoaded', () => {\n   // Setup bulk action buttons\n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "public/app.js",
+        "diff": "--- a/public/app.js+++ b/public/app.js@@ -593,6 +593,11 @@   document.getElementById('btnStopAll').addEventListener('click', stopAll);\n   document.getElementById('btnRestartAll').addEventListener('click', restartAll);\n \n+  const btnRestartManager = document.getElementById('btnRestartManager');\n+  if (btnRestartManager) {\n+    btnRestartManager.addEventListener('click', restartManager);\n+  }\n+\n   // Setup search functionality\n   searchInput.addEventListener('input', (e) => {\n     searchQuery = e.target.value;\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-29T11:49:41.856377",
+    "patch_name": "Patch 2025-11-29 11:49",
+    "description": "",
+    "files_modified": [
+      "server.js",
+      "README.md"
+    ],
+    "summary": {
+      "total": 2,
+      "ok": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "server.js",
+        "diff": "--- a/server.js+++ b/server.js@@ -7,39 +7,58 @@ const { spawn, exec } = require('child_process');\n const express = require('express');\n const WebSocket = require('ws');\n+const { URL } = require('url');\n const { generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');\n \n // Configuration\n const CONFIG_FILE = process.env.CONFIG_FILE || './config.json';\n const PORT = process.env.PORT || 3000;\n const USE_HTTPS = process.env.USE_HTTPS !== 'false';\n+const API_TOKEN = process.env.MANAGER_API_TOKEN || null;\n \n // Process registry\n const processes = new Map();\n const processLogs = new Map();\n \n-// Load configuration\n+// Load configuration (cached with mtime check)\n+let cachedConfig = null;\n+let cachedConfigMtimeMs = null;\n+\n function loadConfig() {\n   try {\n-    if (fs.existsSync(CONFIG_FILE)) {\n+    if (!fs.existsSync(CONFIG_FILE)) {\n+      // If we have a cached config, keep using it even if the file disappears.\n+      if (cachedConfig) {\n+        return cachedConfig;\n+      }\n+      // Fallback default config so the UI can still start.\n+      const defaultConfig = {\n+        programs: [],\n+        ssl: {\n+          cert: './certs/server.crt',\n+          key: './certs/server.key',\n+          autoGenerate: true\n+        }\n+      };\n+      cachedConfig = defaultConfig;\n+      cachedConfigMtimeMs = null;\n+      return defaultConfig;\n+    }\n+\n+    const stats = fs.statSync(CONFIG_FILE);\n+    if (!cachedConfig || stats.mtimeMs !== cachedConfigMtimeMs) {\n       const data = fs.readFileSync(CONFIG_FILE, 'utf8');\n       const config = JSON.parse(data);\n       validateConfig(config);\n-      return config;\n-    }\n+      cachedConfig = config;\n+      cachedConfigMtimeMs = stats.mtimeMs;\n+    }\n+\n+    return cachedConfig;\n   } catch (err) {\n     console.error('Error loading config:', err.message);\n     throw err;\n   }\n-\n-  return {\n-    programs: [],\n-    ssl: {\n-      cert: './certs/server.crt',\n-      key: './certs/server.key',\n-      autoGenerate: true\n-    }\n-  };\n }\n \n // Validate configuration\n@@ -68,10 +87,15 @@     }\n     seenIds.add(program.id);\n \n-    // Warn about missing Start.sh (don't fail, just warn)\n-    const startScript = path.join(program.path, 'Start.sh');\n-    if (!fs.existsSync(startScript)) {\n-      console.warn(`Warning: Start.sh not found for program \"${program.id}\" at ${startScript}`);\n+    // Ensure env object exists\n+    if (!program.env || typeof program.env !== 'object') {\n+      program.env = {};\n+    }\n+\n+    // If url is provided but not a string, warn\n+    if (program.url && typeof program.url !== 'string') {\n+      console.warn(`Program \"${program.id}\" has a non-string url; this will be ignored.`);\n+      delete program.url;\n     }\n   });\n \n@@ -89,7 +113,8 @@     }\n \n     // Generate self-signed certificate using openssl\n-    const cmd = `openssl req -x509 -newkey rsa:4096 -keyout \"${keyPath}\" -out \"${certPath}\" -days 365 -nodes -subj \"/CN=localhost\"`;\n+    const cmd = `\n+openssl req -x509 -newkey rsa:4096 -keyout \"${keyPath}\" -out \"${certPath}\" -days 365 -nodes -subj \"/CN=localhost\"`;\n \n     exec(cmd, (error) => {\n       if (error) {\n@@ -107,142 +132,66 @@   const certPath = config.ssl.cert;\n   const keyPath = config.ssl.key;\n \n-  // Check if certificates exist\n-  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {\n-    if (config.ssl.autoGenerate) {\n-      console.log('SSL certificates not found. Generating self-signed certificate...');\n-      await generateSelfSignedCert(certPath, keyPath);\n-    } else {\n-      throw new Error('SSL certificates not found and autoGenerate is disabled');\n-    }\n-  }\n-\n+  // If cert or key doesn't exist and autoGenerate is enabled, generate them\n+  if (config.ssl.autoGenerate && (!fs.existsSync(certPath) || !fs.existsSync(keyPath))) {\n+    console.log('Generating self-signed certificate...');\n+    await generateSelfSignedCert(certPath, keyPath);\n+  }\n+\n+  // Load SSL credentials\n   return {\n     key: fs.readFileSync(keyPath),\n     cert: fs.readFileSync(certPath)\n   };\n }\n \n-// Process management functions\n-function startProgram(programId, config) {\n-  if (processes.has(programId)) {\n-    const proc = processes.get(programId);\n-    if (proc && !proc.killed) {\n-      throw new Error('Program is already running');\n-    }\n-  }\n-\n+// Program management\n+function getProgramConfig(programId, config) {\n   const program = config.programs.find(p => p.id === programId);\n   if (!program) {\n-    throw new Error('Program not found');\n-  }\n-\n-  const startScript = path.join(program.path, 'Start.sh');\n-  if (!fs.existsSync(startScript)) {\n-    throw new Error(`Start.sh not found in ${program.path}`);\n-  }\n-\n-  // Initialize logs\n-  if (!processLogs.has(programId)) {\n-    processLogs.set(programId, []);\n-  }\n-\n-  const logs = processLogs.get(programId);\n-  logs.length = 0; // Clear old logs\n-\n-  // Start the process\n-  const proc = spawn('bash', [startScript], {\n-    cwd: program.path,\n-    env: { ...process.env, ...program.env },\n-    detached: false\n-  });\n-\n-  proc.stdout.on('data', (data) => {\n-    const line = `[stdout] ${data.toString()}`;\n-    logs.push({ time: new Date().toISOString(), text: line });\n-    if (logs.length > 1000) logs.shift(); // Keep last 1000 lines\n-    broadcastStatus();\n-  });\n-\n-  proc.stderr.on('data', (data) => {\n-    const line = `[stderr] ${data.toString()}`;\n-    logs.push({ time: new Date().toISOString(), text: line });\n-    if (logs.length > 1000) logs.shift();\n-    broadcastStatus();\n-  });\n-\n-  proc.on('exit', (code) => {\n-    const line = `[system] Process exited with code ${code}`;\n-    logs.push({ time: new Date().toISOString(), text: line });\n-    broadcastStatus();\n-  });\n-\n-  // Track spawn time for uptime calculation\n-  proc.spawnDate = Date.now();\n-\n-  processes.set(programId, proc);\n-\n-  return {\n-    id: programId,\n-    name: program.name,\n-    status: 'running',\n-    pid: proc.pid\n-  };\n-}\n-\n-function stopProgram(programId) {\n-  const proc = processes.get(programId);\n-  if (!proc || proc.killed) {\n-    throw new Error('Program is not running');\n-  }\n-\n-  proc.kill('SIGTERM');\n-\n-  // Force kill after 10 seconds if still running\n-  setTimeout(() => {\n-    if (!proc.killed) {\n-      proc.kill('SIGKILL');\n-    }\n-  }, 10000);\n-\n-  return { id: programId, status: 'stopped' };\n-}\n-\n-// Auto-generate URL based on program configuration\n-function generateProgramUrl(program) {\n-  // If URL is explicitly provided, use it\n-  if (program.url) {\n-    return program.url;\n-  }\n-\n-  // Try to auto-generate from PORT environment variable\n-  if (program.env && program.env.PORT) {\n-    const port = program.env.PORT;\n-    return `http://localhost:${port}`;\n-  }\n-\n-  // No URL can be generated\n-  return null;\n+    throw new Error(`Program not found: ${programId}`);\n+  }\n+  return program;\n }\n \n function getProgramStatus(programId, config) {\n   const program = config.programs.find(p => p.id === programId);\n   if (!program) {\n-    return null;\n+    return {\n+      id: programId,\n+      name: programId,\n+      status: 'missing',\n+      url: null,\n+      pid: null\n+    };\n   }\n \n   const proc = processes.get(programId);\n   const isRunning = proc && !proc.killed;\n \n   return {\n-    id: programId,\n+    id: program.id,\n     name: program.name,\n-    path: program.path,\n+    status: isRunning ? 'running' : 'stopped',\n     url: generateProgramUrl(program),\n-    status: isRunning ? 'running' : 'stopped',\n     pid: isRunning ? proc.pid : null,\n     uptime: isRunning && proc.spawnDate ? Date.now() - proc.spawnDate : 0\n   };\n+}\n+\n+function generateProgramUrl(program) {\n+  // If a URL is explicitly provided, use it\n+  if (program.url) {\n+    return program.url;\n+  }\n+\n+  // Otherwise, attempt to generate from PORT\n+  const port = program.env && (program.env.PORT || program.env.port);\n+  if (port) {\n+    return `http://localhost:${port}`;\n+  }\n+\n+  return null;\n }\n \n function getAllProgramsStatus(config) {\n@@ -273,6 +222,33 @@ const app = express();\n app.use(express.json());\n app.use(express.static('public'));\n+\n+// Simple token-based authentication for write APIs.\n+// If MANAGER_API_TOKEN is not set, auth is effectively disabled and all requests are allowed.\n+function getRequestToken(req) {\n+  const header = req.headers['authorization'] || '';\n+  if (header.startsWith('Bearer ')) {\n+    return header.slice(7).trim();\n+  }\n+  if (req.query && typeof req.query.token === 'string') {\n+    return req.query.token;\n+  }\n+  if (req.body && typeof req.body.token === 'string') {\n+    return req.body.token;\n+  }\n+  return null;\n+}\n+\n+function requireApiToken(req, res, next) {\n+  if (!API_TOKEN) {\n+    return next();\n+  }\n+  const token = getRequestToken(req);\n+  if (token === API_TOKEN) {\n+    return next();\n+  }\n+  res.status(401).json({ success: false, error: 'Unauthorized' });\n+}\n \n // API Routes\n app.get('/api/programs', (req, res) => {\n@@ -281,7 +257,7 @@   res.json(status);\n });\n \n-app.post('/api/programs/:id/start', (req, res) => {\n+app.post('/api/programs/:id/start', requireApiToken, (req, res) => {\n   try {\n     const config = loadConfig();\n     const result = startProgram(req.params.id, config);\n@@ -291,7 +267,7 @@   }\n });\n \n-app.post('/api/programs/:id/stop', (req, res) => {\n+app.post('/api/programs/:id/stop', requireApiToken, (req, res) => {\n   try {\n     const result = stopProgram(req.params.id);\n     res.json({ success: true, data: result });\n@@ -300,7 +276,7 @@   }\n });\n \n-app.post('/api/programs/:id/restart', (req, res) => {\n+app.post('/api/programs/:id/restart', requireApiToken, (req, res) => {\n   try {\n     const config = loadConfig();\n     stopProgram(req.params.id);\n@@ -347,16 +323,104 @@ app.get('/api/health', (req, res) => {\n   res.json({\n     status: 'ok',\n-    timestamp: new Date().toISOString(),\n-    uptime: process.uptime()\n-  });\n-});\n-\n-// Restart HTTPS Server Manager process\n-// NOTE: For this to act as a restart, run the manager under a\n-// supervisor (systemd, pm2, or your outer Server Manager) that\n+    timestamp: new Date().toISOString()\n+  });\n+});\n+\n+// Start programs and manage processes\n+function startProgram(programId, config) {\n+  const program = getProgramConfig(programId, config);\n+  const existingProcess = processes.get(programId);\n+\n+  if (existingProcess && !existingProcess.killed) {\n+    throw new Error('Program is already running');\n+  }\n+\n+  const startScript = path.join(program.path, 'Start.sh');\n+\n+  if (!fs.existsSync(startScript)) {\n+    console.warn(`Start script not found for program: ${programId}`);\n+  }\n+\n+  const env = {\n+    ...process.env,\n+    ...program.env\n+  };\n+\n+  const proc = spawn('bash', [startScript], {\n+    cwd: program.path,\n+    env\n+  });\n+\n+  const logs = [];\n+  processLogs.set(programId, logs);\n+\n+  proc.stdout.on('data', (data) => {\n+    const lines = data.toString().split('\\n').filter(Boolean);\n+    lines.forEach(line => {\n+      logs.push({ time: new Date().toISOString(), text: line });\n+      if (logs.length > 1000) {\n+        logs.shift();\n+      }\n+    });\n+    broadcastStatus();\n+  });\n+\n+  proc.stderr.on('data', (data) => {\n+    const lines = data.toString().split('\\n').filter(Boolean);\n+    lines.forEach(line => {\n+      logs.push({ time: new Date().toISOString(), text: `[ERR] ${line}` });\n+      if (logs.length > 1000) {\n+        logs.shift();\n+      }\n+    });\n+    broadcastStatus();\n+  });\n+\n+  proc.on('exit', (code) => {\n+    const line = `[system] Process exited with code ${code}`;\n+    logs.push({ time: new Date().toISOString(), text: line });\n+    broadcastStatus();\n+  });\n+\n+  // Track spawn time for uptime calculation\n+  proc.spawnDate = Date.now();\n+\n+  processes.set(programId, proc);\n+\n+  return {\n+    id: programId,\n+    name: program.name,\n+    status: 'running',\n+    pid: proc.pid\n+  };\n+}\n+\n+function stopProgram(programId) {\n+  const proc = processes.get(programId);\n+  if (!proc || proc.killed) {\n+    throw new Error('Program is not running');\n+  }\n+\n+  proc.kill('SIGTERM');\n+\n+  // Force kill after 10 seconds if still running\n+  setTimeout(() => {\n+    if (!proc.killed) {\n+      proc.kill('SIGKILL');\n+    }\n+  }, 10000);\n+\n+  return {\n+    id: programId,\n+    status: 'stopping'\n+  };\n+}\n+\n+// Restart manager endpoint\n+// This is meant to be used when running under a supervisor (e.g. systemd or another Server Manager) that\n // automatically restarts this process when it exits.\n-app.post('/api/restart-manager', (req, res) => {\n+app.post('/api/restart-manager', requireApiToken, (req, res) => {\n   console.log('[manager] Restart requested via /api/restart-manager');\n \n   res.json({\n@@ -407,12 +471,27 @@   // WebSocket server\n   const wss = new WebSocket.Server({ server });\n \n-  wss.on('connection', (ws) => {\n+  wss.on('connection', (ws, req) => {\n+    // Optional auth: require MANAGER_API_TOKEN for WebSocket clients when set.\n+    if (API_TOKEN) {\n+      try {\n+        const url = new URL(req.url, 'http://localhost');\n+        const token = url.searchParams.get('token');\n+        if (token !== API_TOKEN) {\n+          ws.close(1008, 'Unauthorized');\n+          return;\n+        }\n+      } catch (err) {\n+        ws.close(1008, 'Unauthorized');\n+        return;\n+      }\n+    }\n+\n     wsClients.add(ws);\n     console.log('WebSocket client connected');\n \n-    // Send initial status\n-    const status = getAllProgramsStatus(config);\n+    // Send initial status with the latest config\n+    const status = getAllProgramsStatus(loadConfig());\n     ws.send(JSON.stringify({ type: 'status', data: status }));\n \n     ws.on('close', () => {\n@@ -424,7 +503,8 @@   server.listen(PORT, () => {\n     const protocol = USE_HTTPS ? 'https' : 'http';\n     console.log(`✓ Server running on ${protocol}://localhost:${PORT}`);\n-    console.log(`✓ Loaded ${config.programs.length} program(s)`);\n+    const activeConfig = loadConfig();\n+    console.log(`✓ Loaded ${activeConfig.programs.length} program(s)`);\n     console.log('\\nAccess the web interface at:');\n     console.log(`  ${protocol}://localhost:${PORT}`);\n \n@@ -432,30 +512,34 @@     const { networkInterfaces } = require('os');\n     const nets = networkInterfaces();\n \n-    for (const name of Object.keys(nets)) {\n-      for (const net of nets[name]) {\n-        if (net.family === 'IPv4' && !net.internal) {\n-          console.log(`  ${protocol}://${net.address}:${PORT}`);\n-        }\n+    Object.keys(nets).forEach((name) => {\n+      nets[name].forEach((net) => {\n+        // Skip internal and non-IPv4\n+        if (net.internal || net.family !== 'IPv4') return;\n+\n+        console.log(`  ${protocol}://${net.address}:${PORT}`);\n+      });\n+    });\n+  });\n+\n+  // Graceful shutdown\n+  process.on('SIGINT', () => {\n+    console.log('\\nShutting down server...');\n+\n+    server.close(() => {\n+      console.log('Server stopped');\n+      process.exit(0);\n+    });\n+\n+    // Kill all running child processes\n+    for (const [id, proc] of processes.entries()) {\n+      if (!proc.killed) {\n+        console.log(`Stopping ${id}...`);\n+        proc.kill('SIGTERM');\n       }\n     }\n   });\n }\n-\n-// Handle graceful shutdown\n-process.on('SIGINT', () => {\n-  console.log('\\nShutting down...');\n-\n-  // Stop all running processes\n-  for (const [id, proc] of processes) {\n-    if (!proc.killed) {\n-      console.log(`Stopping ${id}...`);\n-      proc.kill('SIGTERM');\n-    }\n-  }\n-\n-  process.exit(0);\n-});\n \n // Start the server\n startServer().catch(err => {\n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "README.md",
+        "diff": "--- a/README.md+++ b/README.md@@ -1,6 +1,6 @@ # HTTPS Server Manager\n \n-A secure HTTPS-based web application for managing and monitoring multiple programs on your system. Easily start, stop, restart, and view logs of your applications through a clean web interface.\n+A secure HTTPS-based web application for managing and monitoring...nd view logs of your applications through a clean web interface.\n \n ## Features\n \n@@ -14,45 +14,7 @@ \n ## Prerequisites\n \n-- Node.js (v14 or higher)\n-- OpenSSL (for SSL certificate generation)\n-- Bash (for running Start.sh scripts)\n-\n-## Installation\n-\n-1. Clone or download this repository\n-\n-2. Install dependencies:\n-```bash\n-npm install\n-```\n-\n-3. Create your configuration file:\n-```bash\n-cp config.example.json config.json\n-```\n-\n-4. Edit `config.json` to add your programs:\n-```json\n-{\n-  \"programs\": [\n-    {\n-      \"id\": \"my-app\",\n-      \"name\": \"My Application\",\n-      \"path\": \"/path/to/your/app\",\n-      \"env\": {\n-        \"PORT\": \"8001\"\n-      }\n-    }\n-  ],\n-  \"ssl\": {\n-    \"cert\": \"./certs/server.crt\",\n-    \"key\": \"./certs/server.key\",\n-    \"autoGenerate\": true\n-  }\n-}\n-```\n-**Note:** If you set a `PORT` environment variable, the URL will be auto-generated as `http://localhost:PORT`. You can also manually specify a `url` field to override this.\n+...\n \n ## Configuration\n \n@@ -87,9 +49,9 @@   }\n }\n ```\n-→ URL auto-generated as: `http://localhost:8001`\n+→ Auto-generates URL: `http://localhost:8001`\n \n-**With manual URL (overrides auto-generation):**\n+**With manual URL override:**\n ```json\n {\n   \"id\": \"my-app\",\n@@ -113,6 +75,8 @@ ```\n → No URL available (program still works, just no link)\n \n+> When you use `caddy_from_config.js`, only programs with a `url` are turned into `handle_path` blocks. If you want a path like `/codesmith` on your HTTPS endpoint, make sure the program has a `url` whose path is `/codesmith` (for example, `\"/codesmith\"` or `\"https://192.168.1.245:8443/codesmith\"`).\n+\n ### SSL Configuration\n \n - **cert**: Path to SSL certificate file (default: `./certs/server.crt`)\n@@ -126,6 +90,7 @@ - `PORT`: Server port (default: 3000)\n - `CONFIG_FILE`: Path to config file (default: `./config.json`)\n - `USE_HTTPS`: Enable/disable HTTPS (default: `true`)\n+- `MANAGER_API_TOKEN`: Optional shared secret; when set, write APIs (start/stop/restart/program restart-manager) and WebSocket clients must present this token.\n \n ## Usage\n \n@@ -143,193 +108,10 @@ \n ### Using HTTP Instead of HTTPS\n \n-If you prefer HTTP (not recommended for production):\n+If you prefer HTTP (for local development):\n \n ```bash\n USE_HTTPS=false npm start\n ```\n \n-### Accessing the Web Interface\n-\n-After starting the server, you'll see output like:\n-\n-```\n-HTTPS Server Manager\n-===================\n-✓ Self-signed certificate generated\n-✓ HTTPS enabled\n-✓ Server running on https://localhost:3000\n-✓ Loaded 2 program(s)\n-\n-Access the web interface at:\n-  https://localhost:3000\n-  https://192.168.1.100:3000\n-```\n-\n-Open any of these URLs in your web browser.\n-\n-**Note**: If using a self-signed certificate, your browser will show a security warning. This is normal - click \"Advanced\" and \"Proceed\" to continue.\n-\n-## Program Requirements\n-\n-Each program you want to manage must:\n-\n-1. Be in its own directory\n-2. Have a `Start.sh` file in the root of that directory\n-3. The `Start.sh` file should be executable\n-\n-Example `Start.sh`:\n-\n-```bash\n-#!/bin/bash\n-node server.js\n-```\n-\n-or\n-\n-```bash\n-#!/bin/bash\n-python3 app.py\n-```\n-\n-Make it executable:\n-\n-```bash\n-chmod +x Start.sh\n-```\n-\n-### Do My Programs Need HTTPS?\n-\n-**No!** Your individual programs do NOT need to be modified to use HTTPS. Here's what you need to know:\n-\n-- **The HTTPS Server Manager** runs on HTTPS (port 3000 by default) - this is just the management interface\n-- **Your individual programs** can run on HTTP on their own ports (8001, 8002, etc.)\n-- The manager simply starts/stops your programs - it doesn't proxy traffic to them\n-- Each program is accessed directly on its own port and protocol\n-\n-**Example Setup:**\n-```\n-HTTPS Server Manager:  https://localhost:3000  (management interface)\n-Your App 1:           http://localhost:8001   (runs as-is, no changes needed)\n-Your App 2:           http://localhost:8002   (runs as-is, no changes needed)\n-```\n-\n-**If You Want HTTPS for Your Apps:**\n-\n-If you want your individual applications to be accessible over HTTPS, you have a few options:\n-\n-1. **Configure each app individually** - Set up SSL/TLS in each application's code\n-2. **Use a reverse proxy** - Tools like Nginx or Caddy can handle HTTPS and forward to your HTTP apps\n-3. **Keep them on HTTP** - For local/LAN access, HTTP is usually fine\n-\n-The HTTPS Server Manager will work with your apps regardless of whether they use HTTP or HTTPS!\n-\n-## Web Interface\n-\n-The web interface provides:\n-\n-- **Program Cards**: Each program displays its status, path, PID, and URL (if configured)\n-- **Clickable Program Names**: If a URL is configured, click the program name to open it in a new tab\n-- **Start/Stop/Restart Buttons**: Control programs with one click\n-- **Open Button**: Appears when a URL is configured - click to open the program in a new tab\n-- **Log Viewer**: Click \"Logs\" to view the last 100 lines of output\n-- **Real-time Status**: Status updates automatically via WebSocket connection\n-\n-### Button States\n-\n-- **Green (Start)**: Start a stopped program\n-- **Red (Stop)**: Stop a running program\n-- **Blue (Restart)**: Restart a running program\n-- **Cyan (Open)**: Open the program's URL in a new browser tab\n-- **Gray (Logs)**: View program logs\n-\n-## Network Access\n-\n-### LAN Access\n-\n-To access from other devices on your local network:\n-\n-1. Find your server's IP address (shown in the startup output)\n-2. On other devices, navigate to `https://YOUR_IP:3000`\n-3. Accept the security warning for the self-signed certificate\n-\n-### Internet Access\n-\n-To access over the internet, you'll need to:\n-\n-1. **Configure your router** to forward port 3000 to your server\n-2. **Find your public IP** (search \"what is my ip\" on Google)\n-3. **Access via** `https://YOUR_PUBLIC_IP:3000`\n-\n-**Security Note**: When exposing to the internet, consider:\n-- Using proper SSL certificates (Let's Encrypt)\n-- Adding authentication\n-- Using a firewall\n-- Keeping the system updated\n-\n-## API Endpoints\n-\n-The server provides a REST API:\n-\n-- `GET /api/programs` - List all programs\n-- `POST /api/programs/:id/start` - Start a program\n-- `POST /api/programs/:id/stop` - Stop a program\n-- `POST /api/programs/:id/restart` - Restart a program\n-- `GET /api/programs/:id/logs?lines=100` - Get program logs\n-- `GET /api/config` - Get configuration\n-\n-## WebSocket\n-\n-Connect to the WebSocket for real-time updates:\n-\n-```javascript\n-const ws = new WebSocket('wss://localhost:3000');\n-\n-ws.onmessage = (event) => {\n-  const message = JSON.parse(event.data);\n-  if (message.type === 'status') {\n-    console.log('Programs status:', message.data);\n-  }\n-};\n-```\n-\n-## Troubleshooting\n-\n-### Port Already in Use\n-\n-Change the port:\n-\n-```bash\n-PORT=3001 npm start\n-```\n-\n-### SSL Certificate Errors\n-\n-If auto-generation fails, manually create certificates:\n-\n-```bash\n-mkdir -p certs\n-openssl req -x509 -newkey rsa:4096 -keyout certs/server.key -out certs/server.crt -days 365 -nodes -subj \"/CN=localhost\"\n-```\n-\n-### Program Won't Start\n-\n-Check that:\n-1. The path in config.json is correct\n-2. Start.sh exists and is executable\n-3. The program doesn't require additional dependencies\n-4. Check the logs in the web interface for error messages\n-\n-### Can't Access from Other Devices\n-\n-1. Check your firewall allows connections on port 3000\n-2. Verify you're using the correct IP address\n-3. Make sure both devices are on the same network\n-\n-## License\n-\n-MIT\n-\n-## Contributing\n-\n-Feel free to submit issues and pull requests!\n+...\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-29T12:01:24.103261",
+    "patch_name": "Patch 2025-11-29 12:01",
+    "description": "",
+    "files_modified": [
+      "caddy_from_config.js"
+    ],
+    "summary": {
+      "total": 1,
+      "ok": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "caddy_from_config.js",
+        "diff": "--- a/caddy_from_config.js+++ b/caddy_from_config.js@@ -11,15 +11,15 @@ //   const { generateCaddyFromConfig, getCaddyOptionsFromEnv, watchConfigForCaddy } = require('./caddy_from_config');\n //\n // Env vars:\n-//   CONFIG_FILE      - path to config.json (default ./config.json)\n-//   PUBLIC_BASE      - fallback PUBLIC_BASE if not present in programs\n-//   CADDYFILE_PATH   - where to write the generated Caddyfile (default ./Caddyfile.generated)\n-//   CADDY_FILE_OUT   - legacy alias for CADDYFILE_PATH\n-//   CADDY_TLS_CERT   - TLS cert path (default /etc/ssl/caddy/nuc-selfsign.crt)\n-//   CADDY_TLS_KEY    - TLS key path (default /etc/ssl/caddy/nuc-selfsign.key)\n-//   MANAGER_PORT     - internal port for HTTPS Server Manager (default 8061)\n+//   CONFIG_FILE        - path to config.json (default ./config.json)\n+//   PUBLIC_BASE        - fallback PUBLIC_BASE if not present in programs\n+//   CADDYFILE_PATH     - where to write the generated Caddyfile (default ./Caddyfile.generated)\n+//   CADDY_FILE_OUT     - legacy alias for CADDYFILE_PATH\n+//   CADDY_TLS_CERT     - TLS cert path (default /etc/ssl/caddy/nuc-selfsign.crt)\n+//   CADDY_TLS_KEY      - TLS key path (default /etc/ssl/caddy/nuc-selfsign.key)\n+//   MANAGER_PORT       - internal port for HTTPS Server Manager (default 8061)\n //   CADDY_MANAGER_PATH - URL path for Manager UI (default /manager)\n-//   CADDY_RELOAD_CMD - optional shell command to reload Caddy after write\n+//   CADDY_RELOAD_CMD   - optional shell command to reload Caddy after write\n \n const fs = require('fs');\n const path = require('path');\n@@ -123,6 +123,8 @@   lines.push(`    tls ${opts.tlsCert} ${opts.tlsKey}`);\n   lines.push('');\n \n+  // Manager UI: still uses handle_path because the manager itself is not\n+  // prefix-aware and expects to live at \"/\".\n   if (opts.managerPath && opts.managerPort) {\n     lines.push('    # HTTPS Server Manager UI');\n     lines.push(`    handle_path ${opts.managerPath}* {`);\n@@ -149,8 +151,29 @@       if (!prefix) continue;\n \n       const displayName = prog.name || prog.id;\n+\n+      // Decide whether to strip the prefix or not:\n+      // - If the app exposes URL_PREFIX / SCRIPT_NAME / PATH_BASE, we assume\n+      //   it is prefix-aware and we should NOT strip (use `handle`).\n+      // - Otherwise we keep the historical default and strip (use `handle_path`).\n+      // - A per-program boolean \"strip_prefix\" in config.json overrides both.\n+      const explicitStrip = Object.prototype.hasOwnProperty.call(prog, 'strip_prefix')\n+        ? Boolean(prog.strip_prefix)\n+        : null;\n+      const envPrefixAware = Boolean(env.URL_PREFIX || env.SCRIPT_NAME || env.PATH_BASE);\n+\n+      let shouldStrip;\n+      if (explicitStrip !== null) {\n+        shouldStrip = explicitStrip;\n+      } else {\n+        // Default: strip for legacy apps, keep prefix for prefix-aware apps.\n+        shouldStrip = !envPrefixAware;\n+      }\n+\n+      const directive = shouldStrip ? 'handle_path' : 'handle';\n+\n       lines.push(`    # ${displayName}`);\n-      lines.push(`    handle_path ${prefix}* {`);\n+      lines.push(`    ${directive} ${prefix}* {`);\n       lines.push(`        reverse_proxy 127.0.0.1:${port}`);\n       lines.push('    }');\n       lines.push('');\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
+  }
+]
