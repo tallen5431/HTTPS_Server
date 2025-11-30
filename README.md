@@ -2,6 +2,31 @@
 
 A secure, self-configuring HTTPS server manager that automatically detects your network configuration and manages multiple applications with zero manual IP configuration. Perfect for hosting web applications over LAN and internet with automatic Caddy reverse proxy integration.
 
+## 🚀 Quick Start (One Command!)
+
+```bash
+git clone <repository-url> HTTPS_Server
+cd HTTPS_Server
+./setup.sh /path/to/your/projects
+```
+
+That's it! The setup script will:
+- ✅ Check all dependencies (Node.js, npm, Caddy, openssl)
+- ✅ Install npm packages
+- ✅ Generate SSL certificates
+- ✅ Auto-discover your projects
+- ✅ Configure and start Caddy
+- ✅ Give you the URL to access your apps
+
+After setup completes, just run:
+```bash
+./start.sh
+```
+
+Then open `https://<your-ip>:8443/manager` in your browser!
+
+---
+
 ## Features
 
 - **🔍 Auto-Discovery**: Automatically scans projects folder and generates configuration - zero manual setup!

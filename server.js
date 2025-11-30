@@ -367,7 +367,11 @@ function startProgram(programId, config) {
   const startScript = path.join(program.path, 'Start.sh');
 
   if (!fs.existsSync(startScript)) {
-    console.warn(`Start script not found for program: ${programId}`);
+    throw new Error(`Start script not found: ${startScript}. Make sure the program path is correct and Start.sh exists.`);
+  }
+
+  if (!fs.existsSync(program.path)) {
+    throw new Error(`Program directory not found: ${program.path}`);
   }
 
   // Auto-inject PUBLIC_BASE if not already set
@@ -537,12 +541,51 @@ app.post('/api/restart-manager', requireApiToken, (req, res) => {
   }, 1000);
 });
 
+// Startup validation
+function validateEnvironment() {
+  const issues = [];
+
+  // Check if config file exists or can be created
+  if (!fs.existsSync(CONFIG_FILE) && !PROJECTS_DIR) {
+    issues.push('No config.json found and PROJECTS_DIR not set. Run setup.sh or set PROJECTS_DIR environment variable.');
+  }
+
+  // Check if certs directory exists if using HTTPS
+  if (USE_HTTPS) {
+    const config = loadConfig();
+    const certPath = config.ssl?.cert || './certs/server.crt';
+    const keyPath = config.ssl?.key || './certs/server.key';
+
+    if (!config.ssl?.autoGenerate && (!fs.existsSync(certPath) || !fs.existsSync(keyPath))) {
+      issues.push(`SSL certificates not found at ${certPath} and ${keyPath}. Set ssl.autoGenerate to true or run setup.sh`);
+    }
+  }
+
+  // Check if port is available
+  const portNumber = parseInt(PORT);
+  if (isNaN(portNumber) || portNumber < 1 || portNumber > 65535) {
+    issues.push(`Invalid PORT value: ${PORT}. Must be between 1 and 65535.`);
+  }
+
+  return issues;
+}
+
 // Start server
 async function startServer() {
-  const config = loadConfig();
-
   console.log('HTTPS Server Manager');
   console.log('===================');
+  console.log('');
+
+  // Validate environment
+  const issues = validateEnvironment();
+  if (issues.length > 0) {
+    console.error('❌ Startup validation failed:\n');
+    issues.forEach(issue => console.error(`   • ${issue}`));
+    console.error('\n💡 Tip: Run ./setup.sh to configure your server automatically\n');
+    process.exit(1);
+  }
+
+  const config = loadConfig();
 
   // Auto-generate Caddyfile from config and watch for changes (optional)
   try {

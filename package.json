@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "setup": "bash setup.sh",
+    "setup-caddy": "bash setup-caddy.sh",
+    "discover": "node discover-projects.js"
   },
   "keywords": [
     "https",
