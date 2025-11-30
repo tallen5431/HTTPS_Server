@@ -47,13 +47,14 @@ function parseStartScript(scriptPath) {
       hasStreamlit = true;
     }
 
-    // Extract PORT from various patterns
+    // Extract PORT from various patterns (only match actual numbers, not variables)
     const portPatterns = [
-      /PORT[=\s]+["']?(\d+)["']?/i,
-      /--port[=\s]+["']?(\d+)["']?/i,
-      /-p[=\s]+["']?(\d+)["']?/i,
-      /listen[=\s]+["']?(\d+)["']?/i,
-      /port[=\s]+["']?(\d+)["']?/i
+      /\bPORT=["']?(\d+)["']?/i,           // PORT=8080
+      /\bPORT\s+(\d+)/i,                   // PORT 8080 (space-separated)
+      /--port[=\s]+["']?(\d+)["']?/i,      // --port=8080 or --port 8080
+      /-p\s+["']?(\d+)["']?/i,             // -p 8080
+      /--listen[=\s]+["']?(\d+)["']?/i,    // --listen=8080
+      /\blisten[=\s]+["']?(\d+)["']?/i     // listen=8080
     ];
 
     for (const pattern of portPatterns) {
@@ -64,11 +65,11 @@ function parseStartScript(scriptPath) {
       }
     }
 
-    // Extract HOST
+    // Extract HOST (only match actual IPs/hostnames, not variables)
     const hostPatterns = [
-      /HOST[=\s]+["']?([0-9.]+)["']?/i,
-      /--host[=\s]+["']?([0-9.]+)["']?/i,
-      /-h[=\s]+["']?([0-9.]+)["']?/i
+      /\bHOST=["']?([0-9.]+|localhost|0\.0\.0\.0)["']?/i,     // HOST=0.0.0.0
+      /\bHOST\s+([0-9.]+|localhost|0\.0\.0\.0)/i,             // HOST 0.0.0.0
+      /--host[=\s]+["']?([0-9.]+|localhost|0\.0\.0\.0)["']?/i // --host=0.0.0.0
     ];
 
     for (const pattern of hostPatterns) {
@@ -79,14 +80,24 @@ function parseStartScript(scriptPath) {
       }
     }
 
-    // Extract other environment variables
-    const envVarPattern = /export\s+([A-Z_][A-Z0-9_]*)[=\s]+["']?([^"'\n]+)["']?/gi;
+    // Extract other environment variables (only export VAR=value format, not VAR value)
+    const envVarPattern = /export\s+([A-Z_][A-Z0-9_]*)=["']?([^"'\n]+?)["']?(?:\s|$)/gi;
     let match;
     while ((match = envVarPattern.exec(content)) !== null) {
       const [, key, value] = match;
-      if (key !== 'PATH' && key !== 'HOME' && !env[key]) {
-        env[key] = value.trim();
+      const trimmedValue = value.trim();
+
+      // Skip if already set, or if it's a system var, or if it's a variable substitution
+      if (key === 'PATH' || key === 'HOME' || env[key]) {
+        continue;
       }
+
+      // Skip variable substitutions like $VAR or ${VAR} - we can't resolve them
+      if (trimmedValue.startsWith('$')) {
+        continue;
+      }
+
+      env[key] = trimmedValue;
     }
 
     return { env, hasFlask, hasExpress, hasStreamlit };
