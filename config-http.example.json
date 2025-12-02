@@ -1,0 +1,24 @@
+{
+  "hostname": "localhost",
+  "programs": [
+    {
+      "id": "example-app",
+      "name": "Example Application",
+      "path": "/path/to/your/application",
+      "env": {
+        "PORT": "8080",
+        "HOST": "0.0.0.0"
+      }
+    },
+    {
+      "id": "another-app",
+      "name": "Another Application",
+      "path": "/path/to/another/application",
+      "url": "http://localhost:8081",
+      "env": {
+        "PORT": "8081",
+        "HOST": "0.0.0.0"
+      }
+    }
+  ]
+}
