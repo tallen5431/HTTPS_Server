@@ -298,5 +298,37 @@
         "message": "modified"
       }
     ]
+  },
+  {
+    "timestamp": "2025-12-01T20:25:45.670753",
+    "patch_name": "Patch 2025-12-01 20:25",
+    "description": "",
+    "files_modified": [
+      "server-http.js",
+      "config-http.json"
+    ],
+    "summary": {
+      "total": 2,
+      "ok": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    "success": true,
+    "patch_data": null,
+    "error_message": null,
+    "diff_results": [
+      {
+        "path": "server-http.js",
+        "diff": "--- a/server-http.js+++ b/server-http.js@@ -173,19 +173,39 @@ }\n \n function generateProgramUrl(program, config) {\n-  // If a URL is explicitly provided, use it\n+  // If a URL is explicitly provided in the config, keep supporting it as an override\n   if (program.url) {\n     return program.url;\n   }\n \n-  // Generate from PORT\n+  // Prefer to derive the URL automatically from the PORT + a sensible path\n   const port = program.env && (program.env.PORT || program.env.port);\n-  if (port) {\n-    const hostname = config.hostname || getLocalIpAddress();\n-    return `http://${hostname}:${port}`;\n-  }\n-\n-  return null;\n+  if (!port) {\n+    return null;\n+  }\n+\n+  const hostname = config.hostname || getLocalIpAddress();\n+\n+  // Decide a default path suffix based on the program id.\n+  // This means you don't have to hard-code full URLs in config-http.json.\n+  let pathSuffix = '/';\n+  switch (program.id) {\n+    case 'codesmith':\n+      pathSuffix = '/codesmith/';\n+      break;\n+    case 'camscan':\n+      pathSuffix = '/camscan/';\n+      break;\n+    case 'inventoryocr':\n+      pathSuffix = '/inventoryocr/';\n+      break;\n+    default:\n+      // For everything else (Temp Hub, website, webcam, ScanVideo, etc.)\n+      // we assume the app lives at the root path.\n+      pathSuffix = '/';\n+  }\n+\n+  return `http://${hostname}:${port}${pathSuffix}`;\n }\n \n function getAllProgramsStatus(config) {\n",
+        "status": "ok",
+        "message": "modified"
+      },
+      {
+        "path": "config-http.json",
+        "diff": "--- a/config-http.json+++ b/config-http.json@@ -5,7 +5,6 @@       \"id\": \"codesmith\",\n       \"name\": \"CodeSmith\",\n       \"path\": \"/home/jupyter-tj/projects/CodeSmith\",\n-      \"url\": \"http://192.168.1.220:8057/codesmith/\",\n       \"env\": {\n         \"HOST\": \"0.0.0.0\",\n         \"PORT\": \"8057\",\n@@ -17,7 +16,6 @@       \"id\": \"camscan\",\n       \"name\": \"CamScan\",\n       \"path\": \"/home/jupyter-tj/projects/CamScan\",\n-      \"url\": \"http://192.168.1.220:8059/camscan\",\n       \"env\": {\n         \"HOST\": \"0.0.0.0\",\n         \"PORT\": \"8059\"\n@@ -28,18 +26,16 @@       \"id\": \"inventoryocr\",\n       \"name\": \"Inventoryocr\",\n       \"path\": \"/home/jupyter-tj/projects/InventoryOCR\",\n-      \"url\": \"http://192.168.1.220:8001/inventoryocr\",\n       \"env\": {\n         \"HOST\": \"0.0.0.0\",\n         \"PORT\": \"8001\"\n       },\n-      \"comment\": \"Direct HTTP access on 8001 (root path)\"\n+      \"comment\": \"Direct HTTP access on 8001\"\n     },\n     {\n       \"id\": \"temperature_sensor-(2)\",\n       \"name\": \"Temperature Sensor (2)\",\n       \"path\": \"/home/jupyter-tj/projects/Temperature_Sensor (2)\",\n-      \"url\": \"http://192.168.1.220:8002/\",\n       \"env\": {\n         \"HOST\": \"0.0.0.0\",\n         \"PORT\": \"8002\"\n@@ -50,7 +46,6 @@       \"id\": \"tempsensor_website\",\n       \"name\": \"TempSensor Website\",\n       \"path\": \"/home/jupyter-tj/projects/TempSensor_Website\",\n-      \"url\": \"http://192.168.1.220:8000/\",\n       \"env\": {\n         \"HOST\": \"0.0.0.0\",\n         \"PORT\": \"8000\"\n@@ -61,7 +56,6 @@       \"id\": \"webcam_server\",\n       \"name\": \"Webcam Server\",\n       \"path\": \"/home/jupyter-tj/projects/Webcam_Server\",\n-      \"url\": \"http://192.168.1.220:8090/\",\n       \"env\": {\n         \"HOST\": \"0.0.0.0\",\n         \"PORT\": \"8090\",\n@@ -73,7 +67,6 @@       \"id\": \"scanvideo\",\n       \"name\": \"ScanVideo\",\n       \"path\": \"/home/jupyter-tj/projects/ScanVideo\",\n-      \"url\": \"http://192.168.1.220:8091/\",\n       \"env\": {\n         \"HOST\": \"0.0.0.0\",\n         \"PORT\": \"8091\"\n",
+        "status": "ok",
+        "message": "modified"
+      }
+    ]
   }
 ]

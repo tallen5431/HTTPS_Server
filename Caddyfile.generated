@@ -6,20 +6,15 @@
     https_port 8443
 }
 
-https://192.168.1.245 {
+https://localhost {
     tls /etc/ssl/caddy/nuc-selfsign.crt /etc/ssl/caddy/nuc-selfsign.key
 
     # HTTPS Server Manager UI
     handle_path /manager* {
-        reverse_proxy 127.0.0.1:8061
+        reverse_proxy 127.0.0.1:8060
     }
 
     # Application programs from config.json
-    # CodeSmith Ollama Assistant
-    handle /codesmith-ollama* {
-        reverse_proxy 127.0.0.1:8070
-    }
-
     # CodeSmith
     handle_path /codesmith* {
         reverse_proxy 127.0.0.1:8057
@@ -38,21 +33,6 @@ https://192.168.1.245 {
     # Temperature Sensor (2)
     handle_path /tempsensor* {
         reverse_proxy 127.0.0.1:8002
-    }
-
-    # TempSensor Website
-    handle_path /tempsite* {
-        reverse_proxy 127.0.0.1:8000
-    }
-
-    # Webcam Server
-    handle_path /webcam* {
-        reverse_proxy 127.0.0.1:8090
-    }
-
-    # ScanVideo
-    handle_path /scanvideo* {
-        reverse_proxy 127.0.0.1:8091
     }
 
 }

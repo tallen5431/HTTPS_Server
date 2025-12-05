@@ -173,39 +173,19 @@ function getProgramStatus(programId, config) {
 }
 
 function generateProgramUrl(program, config) {
-  // If a URL is explicitly provided in the config, keep supporting it as an override
+  // If a URL is explicitly provided, use it
   if (program.url) {
     return program.url;
   }
 
-  // Prefer to derive the URL automatically from the PORT + a sensible path
+  // Generate from PORT
   const port = program.env && (program.env.PORT || program.env.port);
-  if (!port) {
-    return null;
+  if (port) {
+    const hostname = config.hostname || getLocalIpAddress();
+    return `http://${hostname}:${port}`;
   }
 
-  const hostname = config.hostname || getLocalIpAddress();
-
-  // Decide a default path suffix based on the program id.
-  // This means you don't have to hard-code full URLs in config-http.json.
-  let pathSuffix = '/';
-  switch (program.id) {
-    case 'codesmith':
-      pathSuffix = '/codesmith/';
-      break;
-    case 'camscan':
-      pathSuffix = '/camscan/';
-      break;
-    case 'inventoryocr':
-      pathSuffix = '/inventoryocr/';
-      break;
-    default:
-      // For everything else (Temp Hub, website, webcam, ScanVideo, etc.)
-      // we assume the app lives at the root path.
-      pathSuffix = '/';
-  }
-
-  return `http://${hostname}:${port}${pathSuffix}`;
+  return null;
 }
 
 function getAllProgramsStatus(config) {

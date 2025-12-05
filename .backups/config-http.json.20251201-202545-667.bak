@@ -1,0 +1,89 @@
+{
+  "hostname": "192.168.1.220",
+  "programs": [
+    {
+      "id": "codesmith",
+      "name": "CodeSmith",
+      "path": "/home/jupyter-tj/projects/CodeSmith",
+      "url": "http://192.168.1.220:8057/codesmith/",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8057",
+        "PYTHONUTF8": "1"
+      },
+      "comment": "Direct HTTP access on 8057 with /codesmith/ prefix"
+    },
+    {
+      "id": "camscan",
+      "name": "CamScan",
+      "path": "/home/jupyter-tj/projects/CamScan",
+      "url": "http://192.168.1.220:8059/camscan",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8059"
+      },
+      "comment": "Direct HTTP access on 8059 (root path)"
+    },
+    {
+      "id": "inventoryocr",
+      "name": "Inventoryocr",
+      "path": "/home/jupyter-tj/projects/InventoryOCR",
+      "url": "http://192.168.1.220:8001/inventoryocr",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8001"
+      },
+      "comment": "Direct HTTP access on 8001 (root path)"
+    },
+    {
+      "id": "temperature_sensor-(2)",
+      "name": "Temperature Sensor (2)",
+      "path": "/home/jupyter-tj/projects/Temperature_Sensor (2)",
+      "url": "http://192.168.1.220:8002/",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8002"
+      },
+      "comment": "Direct HTTP access on 8002 (Temperature Hub)"
+    },
+    {
+      "id": "tempsensor_website",
+      "name": "TempSensor Website",
+      "path": "/home/jupyter-tj/projects/TempSensor_Website",
+      "url": "http://192.168.1.220:8000/",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8000"
+      },
+      "comment": "Direct HTTP access on 8000 (marketing site)"
+    },
+    {
+      "id": "webcam_server",
+      "name": "Webcam Server",
+      "path": "/home/jupyter-tj/projects/Webcam_Server",
+      "url": "http://192.168.1.220:8090/",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8090",
+        "CAM_INDEX": "0"
+      },
+      "comment": "Direct HTTP access on 8090 (webcam stream)"
+    },
+    {
+      "id": "scanvideo",
+      "name": "ScanVideo",
+      "path": "/home/jupyter-tj/projects/ScanVideo",
+      "url": "http://192.168.1.220:8091/",
+      "env": {
+        "HOST": "0.0.0.0",
+        "PORT": "8091"
+      },
+      "comment": "Direct HTTP access on 8091 (ScanVideo UI)"
+    }
+  ],
+  "ssl": {
+    "cert": "./certs/server.crt",
+    "key": "./certs/server.key",
+    "autoGenerate": true
+  }
+}
